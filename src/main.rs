@@ -8,7 +8,7 @@ use std::{
 	env,
 	path::{Path, PathBuf},
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool},
         Arc,
     },
 	thread,

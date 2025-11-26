@@ -141,11 +141,6 @@ fn read_file_with_encoding(filepath: &Path, encoding: &'static Encoding) -> Resu
 /// * Then if no BOM then UTF-8 when `assume_utf8` is true
 /// * If `assume_utf8` is false, uses CP1252 encoding if opening file as UTF-8 fails
 /// 
-/// # Example
-/// 
-/// ```rust
-/// let encoding = detect_encoding(&Path::new("example.txt"), true);
-/// ```
 fn detect_encoding(filepath: &Path, assume_utf8: bool) -> &'static Encoding {
 	//check if filepath exists and is a file
 	if !filepath.exists() {
@@ -259,13 +254,6 @@ fn msg_get_contents(cfbf: &mut CompoundFile<File>, path: PathBuf) -> (String, St
 /// # Returns
 /// 
 /// * A heirarchal list of filepaths of any extracted files, includes the top-level file
-/// 
-/// # Example
-/// 
-/// ```rust
-/// let filepaths = extract_archive(&Path::new("example.txt"));
-/// ```
-
 fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of_files_in_archive: &mut Vec<SubFileItem>) -> Result<(), Box<dyn Error>> {
 
 
