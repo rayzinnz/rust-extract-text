@@ -428,7 +428,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 						debug!("depth: {}, path: {:?}", sub_path.components().count()-1, sub_path);
 						// attachment binary, 0x3701 AttachDataObject, 0x0102 PT_BINARY
 						if cfbf.exists(sub_path.join("__substg1.0_37010102")) {
-							println!("Binary attachment");
+							// println!("Binary attachment");
 							//attachment filename, 0x3707 AttachLongFilename, 0x001F UTF_16LE
 							let filename: String;
 							if let Ok(mut stream) = cfbf.open_stream(sub_path.join("__substg1.0_3707001F")) {
@@ -460,7 +460,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 						}
 						//attachment msg path, 0x3701 AttachDataObject, 0x0102 PT_BINARY, 0x000D PT_OBJECT
 						else if cfbf.exists(sub_path.join("__substg1.0_3701000D")) {
-							println!("MSG attachment");
+							// println!("MSG attachment");
 							//attachment displayname, 0x3001 DisplayName, 0x001F UTF_16LE
 							let mut displayname: String;
 							if let Ok(mut stream) = cfbf.open_stream(sub_path.join("__substg1.0_3001001F")) {
