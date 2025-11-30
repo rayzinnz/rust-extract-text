@@ -480,10 +480,13 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							fs::create_dir_all(outpath.parent().unwrap())?;
 							match fs::write(&outpath, "") {
 								Ok(_) => {
+									let mut new_parent_files = parent_files.clone();
+									let parent_files_subpaths: Vec<String> = filesubpath.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect();
+									new_parent_files.extend(parent_files_subpaths);
 									list_of_files_in_archive.push(SubFileItem {
 										filepath: outpath,
 										depth,
-										parent_files: parent_files.clone(),
+										parent_files: new_parent_files,
 										ok_to_extract_text: false,
 									});
 								},
