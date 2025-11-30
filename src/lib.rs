@@ -38,6 +38,8 @@ use dotext::doc::{MsDoc, OpenOfficeDoc};
 use dotext::docx::Docx;
 use dotext::odt::Odt;
 
+const DELETE_TEMP_FILES:bool = true;
+
 struct MagicBytes {
 	extension: &'static str,
 	bytes: &'static [u8],
@@ -472,7 +474,24 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 								panic!("Body stream not found in {:?}", filepath)
 							}
 							displayname.retain(|c| !FILENAME_ILLEGAL_CHARS.contains(&c));
-							let filesubpath2 = filesubpath.clone().join(displayname);
+							//empty file placeholder as embedded msg
+							let msg_placeholder_filename = displayname.clone() + ".msg";
+							let outpath = tempfiles_location().join(&achive_uuid_subdir).join(&filesubpath).join(msg_placeholder_filename);
+							fs::create_dir_all(outpath.parent().unwrap())?;
+							match fs::write(&outpath, "") {
+								Ok(_) => {
+									list_of_files_in_archive.push(SubFileItem {
+										filepath: outpath,
+										depth,
+										parent_files: parent_files.clone(),
+										ok_to_extract_text: false,
+									});
+								},
+								Err(e) => {
+									error!("Error writing to file {:?}: {}", outpath, e)
+								},
+							}
+							let filesubpath2 = filesubpath.clone().join(&displayname);
 							//recurse into path
 							let (subject, body, sub_paths2) = msg_get_contents(&mut cfbf, sub_path.join("__substg1.0_3701000D"));
 							let outpath = tempfiles_location().join(&achive_uuid_subdir).join(&filesubpath2).join("body.txt");
@@ -1049,11 +1068,13 @@ pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListIt
 					let subfile_text = extract_text_from_subfile(&sub_file_item)?;
 					// trace!("subfile_text {:?}", subfile_text);
 					//cleanup of temp files and dirs
-					if sub_file_item.depth >= 1 {
-						let temp_dir = sub_file_item.filepath.clone();
-						let temp_dir = temp_dir.parent().unwrap().to_path_buf();
-						temp_dirs_to_remove.insert(temp_dir);
-						_ = std::fs::remove_file(&sub_file_item.filepath); //delete the file
+					if DELETE_TEMP_FILES {
+						if sub_file_item.depth >= 1 {
+							let temp_dir = sub_file_item.filepath.clone();
+							let temp_dir = temp_dir.parent().unwrap().to_path_buf();
+							temp_dirs_to_remove.insert(temp_dir);
+							_ = std::fs::remove_file(&sub_file_item.filepath); //delete the file
+						}
 					}
 					let file_list_item: FileListItem = FileListItem{
 						filename: file_name,
