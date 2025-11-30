@@ -65,7 +65,7 @@ fn main()  -> Result<(), Box<dyn Error>> {
     // }
 
 	// let path = Path::new(r#"C:\Users\hrag\Sync\Programming\python\file\test_text_extract\txt\text_cp1252.txt"#);
-	let path = Path::new(r#"C:\Users\hrag\Sync\Programming\python\file\test_text_extract\binary\main.exe.bin"#);
+	// let path = Path::new(r#"C:\Users\hrag\Sync\Programming\python\file\test_text_extract\binary\main.exe.bin"#);
 	// let path = Path::new(r#"C:\Users\hrag\Sync\Programming\python\file\test_text_extract\archives\202010.zip"#);
 	// let path = Path::new(r#"C:\Users\hrag\Sync\Programming\python\file\test_text_extract\archives\with_alternative_password.7z"#);
 	// let path = Path::new(r#"C:\Users\hrag\Sync\Programming\python\file\test_text_extract\docs\fiche d'evaluation du stagiaire - Loïc Vital.pdf"#);
@@ -80,7 +80,7 @@ fn main()  -> Result<(), Box<dyn Error>> {
 	// let path = Path::new("/home/ray/MEGA/Rays/Programming/python/file/test_text_extract/docs/eLIMS-FGS Incident Record Model Template.docm");
 	// let path = Path::new("/home/ray/MEGA/Rays/Programming/python/file/test_text_extract/docs/Cover Letter - Rocket Lab - Software Engineer.odt");
 	// let path = Path::new("/home/ray/MEGA/Rays/Programming/python/file/test_text_extract/emails/Agworld soil sampling information - Eurofins NZ.msg");
-	// let path = Path::new("/home/ray/MEGA/Rays/Programming/python/file/test_text_extract/emails/msg_in_msg_in_msg.msg");
+	let path = Path::new("/home/ray/MEGA/Rays/Programming/python/file/test_text_extract/emails/msg_in_msg_in_msg.msg");
 	// let path = Path::new("");
 
 	let file_crc = checksum_file(Crc64Nvme, path.to_str().unwrap(), None).unwrap() as i64;
@@ -89,7 +89,7 @@ fn main()  -> Result<(), Box<dyn Error>> {
 	let keep_going_flag = keep_going.clone();
 	let contents = extract_text_from_file(path, pre_scanned_items, keep_going_flag)?;
 
-	debug!("{:#?}", contents);
+	// debug!("{:#?}", contents);
     
     info!("Finished traversing directory");
     
