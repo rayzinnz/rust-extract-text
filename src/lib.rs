@@ -979,6 +979,7 @@ fn extract_text_from_subfile(file_list_item: &SubFileItem) -> Result<String, Box
 	}
 }
 
+#[derive(PartialEq)]
 #[derive(Debug)]
 pub struct FileListItem {
 	pub filename: String,
@@ -1002,17 +1003,25 @@ pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListIt
 	for sub_file_item in list_of_files_in_archive {
 		match sub_file_item.filepath.metadata() {
 			Ok(metadata) => {
+				let file_name = sub_file_item.filepath.file_name().unwrap().to_string_lossy().to_string();
 				let file_len:u64 = metadata.len();
 				trace!("file_len {}", file_len);
 				if file_len==0 {
-					debug!("skipping empty file {:?}", sub_file_item.filepath);
+					//add a SubFileItem with empty contents.
+					let file_list_item: FileListItem = FileListItem{
+						filename: file_name,
+						parent_files: sub_file_item.parent_files,
+						crc: 0,
+						size: file_len as i64,
+						text_contents: Some(String::new()),
+					};
+					file_list_items.push(file_list_item);
 					continue;
 				}
 				debug!("{:?}", sub_file_item);
 				debug!("\n  file: {:?}\n    depth:{}, {:?}\n      subfile: {:?}", filepath, sub_file_item.depth, sub_file_item.parent_files, sub_file_item.filepath.file_name().unwrap());
 
 				let file_crc: i64 = checksum_file(Crc64Nvme, sub_file_item.filepath.to_str().unwrap(), None).unwrap() as i64;
-				let file_name = sub_file_item.filepath.file_name().unwrap().to_string_lossy().to_string();
 
 				//if this is in a prescanned item, then check the filecrc
 				let mut skip_file = false;
@@ -1072,4 +1081,34 @@ pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListIt
 	}
 
 	Ok(file_list_items)
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+    #[test]
+    fn extract_text_from_file_empty_file() {
+		let pre_scanned_items: Vec<FileListItem> = Vec::new();
+		let keep_going = Arc::new(AtomicBool::new(true));
+		let keep_going_flag = keep_going.clone();
+		let result = extract_text_from_file(
+			Path::new("./tests/resources/files_to_scan/empty_file"),
+			pre_scanned_items,
+			keep_going_flag
+		).unwrap();
+		let mut file_list_items: Vec<FileListItem> = Vec::new();
+		let parent_files:Vec<String> = Vec::new();
+		let file_list_item: FileListItem = FileListItem{
+			filename: String::from("empty_file"),
+			parent_files: parent_files,
+			crc: 0,
+			size: 0,
+			text_contents: Some(String::new()),
+		};
+		file_list_items.push(file_list_item);
+
+		assert_eq!(result, file_list_items);
+    }
+
 }
