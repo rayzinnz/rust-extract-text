@@ -2,13 +2,14 @@ use crc_fast::{checksum_file, CrcAlgorithm::Crc64Nvme};
 use extract_text::*;
 use helper_lib::*;
 use log::*;
+use serde_json;
 use simplelog::*;
 use std::{
 	error::Error,
-	env,
+	fs,
 	path::{Path, PathBuf},
     sync::{
-        atomic::{AtomicBool},
+        atomic::{AtomicBool, Ordering},
         Arc,
     },
 	thread,
@@ -33,20 +34,9 @@ fn main()  -> Result<(), Box<dyn Error>> {
 
     let keep_going = Arc::new(AtomicBool::new(true));
     let keep_going_flag = keep_going.clone();
-    let _signaler_handle = thread::spawn(move || {watch_for_quit(keep_going_flag);});
+    let watch_for_quit_handle = thread::spawn(move || {watch_for_quit(keep_going_flag);});
 
-	info!("Current OS: {}", env::consts::OS); //  "macos", "windows", or "linux".
-	// let tempfiles_loc = tempfiles_location();
-
-	let starting_dir: String;
-	if cfg!(target_os = "windows") {
-		starting_dir = String::from(r#"C:\Users\hrag\Sync\Programming\python\FileSearcher\test"#);
-	} else if cfg!(target_os = "linux") {
-		starting_dir = String::from("/home/ray/MEGA/Rays/Programming/python/file/test_text_extract");
-	} else {
-		panic!("Unsupported OS");
-	}
-	let starting_path: PathBuf = PathBuf::from(starting_dir);
+	let starting_path: PathBuf = PathBuf::from("./tests/resources/files_to_scan");
 
     info!("Starting to traverse directory: {:?}", starting_path);
     
@@ -64,34 +54,42 @@ fn main()  -> Result<(), Box<dyn Error>> {
     //     }
     // }
 
-	// let path = Path::new(r#"C:\Users\hrag\Sync\Programming\python\file\test_text_extract\txt\text_cp1252.txt"#);
-	// let path = Path::new(r#"C:\Users\hrag\Sync\Programming\python\file\test_text_extract\binary\main.exe.bin"#);
-	// let path = Path::new(r#"C:\Users\hrag\Sync\Programming\python\file\test_text_extract\archives\202010.zip"#);
-	// let path = Path::new(r#"C:\Users\hrag\Sync\Programming\python\file\test_text_extract\archives\with_alternative_password.7z"#);
-	// let path = Path::new(r#"C:\Users\hrag\Sync\Programming\python\file\test_text_extract\docs\fiche d'evaluation du stagiaire - Loïc Vital.pdf"#);
-	// let path = Path::new(r#"c:\Users\hrag\Sync\Programming\python\file\test_text_extract\docs\sample2.pdf"#);
-	// let path = Path::new(r#"c:\Users\hrag\Sync\Programming\python\file\test_text_extract\docs\eLIMS-FGS Incident Record Model Template.docm"#);
-	// let path = Path::new(r#"c:\Users\hrag\Sync\Programming\python\file\test_text_extract\emails\msg_in_msg_in_msg.msg"#);
-	// let path = Path::new(r#""#);
+	// subpath starts from under here: ./tests/resources/files_to_scan
+	let subpath = Path::new("empty_file");
+	// let subpath = Path::new("emails/msg_in_msg_in_msg.msg");
 
-	// let path = Path::new("/home/ray/MEGA/Rays/Programming/python/file/test_text_extract/txt/text_utf8bom.txt");
-	// let path = Path::new("/home/ray/MEGA/Rays/Programming/python/file/test_text_extract/docs/sample2.pdf");
-	// let path = Path::new("/home/ray/MEGA/Rays/Programming/python/file/test_text_extract/docs/Heinz Watties Reporting V06.xlsb");
-	// let path = Path::new("/home/ray/MEGA/Rays/Programming/python/file/test_text_extract/docs/eLIMS-FGS Incident Record Model Template.docm");
-	// let path = Path::new("/home/ray/MEGA/Rays/Programming/python/file/test_text_extract/docs/Cover Letter - Rocket Lab - Software Engineer.odt");
-	// let path = Path::new("/home/ray/MEGA/Rays/Programming/python/file/test_text_extract/emails/Agworld soil sampling information - Eurofins NZ.msg");
-	let path = Path::new("/home/ray/MEGA/Rays/Programming/python/file/test_text_extract/emails/msg_in_msg_in_msg.msg");
-	// let path = Path::new("");
-
+	let path = Path::new("./tests/resources/files_to_scan").join(subpath);
 	let file_crc = checksum_file(Crc64Nvme, path.to_str().unwrap(), None).unwrap() as i64;
 	debug!("file_crc: {}", file_crc);
 	let pre_scanned_items: Vec<FileListItem> = Vec::new();
 	let keep_going_flag = keep_going.clone();
-	let contents = extract_text_from_file(path, pre_scanned_items, keep_going_flag)?;
+	let contents = extract_text_from_file(&path, pre_scanned_items, keep_going_flag)?;
 
 	// debug!("{:#?}", contents);
-    
+
+	let store_serialized_contents_to_testing_file = true;
+	if store_serialized_contents_to_testing_file {
+		//store serialized contents to file
+		let mut serial_path = Path::new("./tests/resources/expected").join(subpath);
+		serial_path.add_extension("json");
+		fs::create_dir_all(&serial_path.parent().unwrap()).expect("Error creating path for serialized file");
+		let serialized = serde_json::to_string_pretty(&contents).expect("Error when serializing contents object.");
+		// debug!("{}", serialized);
+		fs::write(&serial_path, serialized).expect("Could not write serialize file.");
+		//load serialized object
+		let obj_as_json = fs::read_to_string(&serial_path).expect("Error reading serialized file.");
+		let _contents: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
+		// debug!("{:#?}", contents);
+	}
+
     info!("Finished traversing directory");
     
+	keep_going.store(false, Ordering::Relaxed);
+	if let Err(e) = watch_for_quit_handle.join() {
+		error!("watch_for_quit thread join error: {:?}", e);
+	}
+
+	// keep_going.store(false, Ordering::Relaxed);
+
     Ok(())
 }
