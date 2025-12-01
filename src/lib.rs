@@ -13,6 +13,7 @@ use encoding_rs::{Encoding, UTF_8, UTF_16BE, UTF_16LE, WINDOWS_1252};
 use encoding_rs_io::DecodeReaderBytesBuilder;
 use log::*;
 use mail_parser::{MessageParser, MimeHeaders};
+use serde::{Serialize, Deserialize};
 use sevenz_rust::decompress_file_with_password;
 use std::{
 	collections::HashSet,
@@ -425,6 +426,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 
 			while !msg_attachments_to_traverse.is_empty() {
 				if let Some((filesubpath, sub_paths)) = msg_attachments_to_traverse.pop() {
+					let achive_uuid_msg_subdir: &str = &Uuid::new_v4().simple().to_string();
 					debug!("sub_paths: {:?}", sub_paths);
 					for sub_path in sub_paths {
 						debug!("depth: {}, path: {:?}", sub_path.components().count()-1, sub_path);
@@ -445,11 +447,12 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							let mut stream = cfbf.open_stream(sub_path.join("__substg1.0_37010102"))?;
 							let mut data = Vec::new();
 							stream.read_to_end(&mut data)?;
-							let outpath = tempfiles_location().join(&achive_uuid_subdir).join(filesubpath.clone()).join(filename);
+							let outpath = tempfiles_location().join(&achive_uuid_subdir).join(achive_uuid_msg_subdir).join(filename);
 							fs::create_dir_all(outpath.parent().unwrap())?;
 							match fs::write(&outpath, data) {
 								Ok(_) => {
 									let mut new_parent_files = parent_files.clone();
+									new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
 									let parent_files_subpaths: Vec<String> = filesubpath.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect();
 									new_parent_files.extend(parent_files_subpaths);
 									extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
@@ -476,17 +479,18 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							displayname.retain(|c| !FILENAME_ILLEGAL_CHARS.contains(&c));
 							//empty file placeholder as embedded msg
 							let msg_placeholder_filename = displayname.clone() + ".msg";
-							let outpath = tempfiles_location().join(&achive_uuid_subdir).join(&filesubpath).join(msg_placeholder_filename);
+							let outpath = tempfiles_location().join(&achive_uuid_subdir).join(achive_uuid_msg_subdir).join(&msg_placeholder_filename);
 							fs::create_dir_all(outpath.parent().unwrap())?;
 							match fs::write(&outpath, "") {
 								Ok(_) => {
 									let mut new_parent_files = parent_files.clone();
+									new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
 									let parent_files_subpaths: Vec<String> = filesubpath.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect();
 									new_parent_files.extend(parent_files_subpaths);
 									list_of_files_in_archive.push(SubFileItem {
 										filepath: outpath,
 										depth,
-										parent_files: new_parent_files,
+										parent_files: new_parent_files.clone(),
 										ok_to_extract_text: false,
 									});
 								},
@@ -494,15 +498,16 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 									error!("Error writing to file {:?}: {}", outpath, e)
 								},
 							}
-							let filesubpath2 = filesubpath.clone().join(&displayname);
+							let filesubpath2 = filesubpath.clone().join(&msg_placeholder_filename);
 							//recurse into path
 							let (subject, body, sub_paths2) = msg_get_contents(&mut cfbf, sub_path.join("__substg1.0_3701000D"));
-							let outpath = tempfiles_location().join(&achive_uuid_subdir).join(&filesubpath2).join("body.txt");
+							let outpath = tempfiles_location().join(&achive_uuid_subdir).join(achive_uuid_msg_subdir).join("body.txt");
 							fs::create_dir_all(outpath.parent().unwrap())?;
 							let outtext = subject + "\n\n" + &body;
 							match fs::write(&outpath, outtext) {
 								Ok(_) => {
 									let mut new_parent_files = parent_files.clone();
+									new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
 									let parent_files_subpaths: Vec<String> = filesubpath2.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect();
 									new_parent_files.extend(parent_files_subpaths);
 									extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
@@ -1001,8 +1006,7 @@ fn extract_text_from_subfile(file_list_item: &SubFileItem) -> Result<String, Box
 	}
 }
 
-#[derive(PartialEq)]
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct FileListItem {
 	pub filename: String,
 	pub parent_files: Vec<String>,
@@ -1121,18 +1125,30 @@ mod tests {
 			pre_scanned_items,
 			keep_going_flag
 		).unwrap();
-		let mut file_list_items: Vec<FileListItem> = Vec::new();
-		let parent_files:Vec<String> = Vec::new();
-		let file_list_item: FileListItem = FileListItem{
-			filename: String::from("empty_file"),
-			parent_files: parent_files,
-			crc: 0,
-			size: 0,
-			text_contents: Some(String::new()),
-		};
-		file_list_items.push(file_list_item);
+		//load expected from serde serialization
+		let serial_path = Path::new("./tests/resources/expected/empty_file.json");
+		let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
+		let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
+		
+		assert_eq!(result, expected);
+    }
 
-		assert_eq!(result, file_list_items);
+    #[test]
+    fn extract_text_from_file_emails_msg_in_msg_in_msg() {
+		let pre_scanned_items: Vec<FileListItem> = Vec::new();
+		let keep_going = Arc::new(AtomicBool::new(true));
+		let keep_going_flag = keep_going.clone();
+		let result = extract_text_from_file(
+			Path::new("./tests/resources/files_to_scan/emails/msg_in_msg_in_msg.msg"),
+			pre_scanned_items,
+			keep_going_flag
+		).unwrap();
+		//load expected from serde serialization
+		let serial_path = Path::new("./tests/resources/expected/emails/msg_in_msg_in_msg.msg.json");
+		let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
+		let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
+		
+		assert_eq!(result, expected);
     }
 
 }
