@@ -39,7 +39,7 @@ use dotext::doc::{MsDoc, OpenOfficeDoc};
 use dotext::docx::Docx;
 use dotext::odt::Odt;
 
-const DELETE_TEMP_FILES:bool = false;
+const DELETE_TEMP_FILES:bool = true;
 
 struct MagicBytes {
 	extension: &'static str,
