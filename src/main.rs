@@ -1,6 +1,9 @@
 use crc_fast::{checksum_file, CrcAlgorithm::Crc64Nvme};
 use extract_text::*;
-use helper_lib::*;
+use helper_lib::{
+	watch_for_quit,
+	paths::add_extension
+};
 use log::*;
 use serde_json;
 use simplelog::*;
@@ -71,7 +74,7 @@ fn main()  -> Result<(), Box<dyn Error>> {
 	if store_serialized_contents_to_testing_file {
 		//store serialized contents to file
 		let mut serial_path = Path::new("./tests/resources/expected").join(subpath);
-		serial_path.add_extension("json");
+		serial_path = add_extension(&serial_path, "json");
 		fs::create_dir_all(&serial_path.parent().unwrap()).expect("Error creating path for serialized file");
 		let serialized = serde_json::to_string_pretty(&contents).expect("Error when serializing contents object.");
 		// debug!("{}", serialized);
