@@ -1136,7 +1136,8 @@ mod tests {
 		assert_eq!(result, expected);
     }
 
-    #[test]
+    #[cfg(target_os = "windows")]
+	#[test]
     fn extract_text_from_file_docs_5407953830_pdf() {
 		let pre_scanned_items: Vec<FileListItem> = Vec::new();
 		let keep_going = Arc::new(AtomicBool::new(true));
@@ -1147,14 +1148,71 @@ mod tests {
 			keep_going_flag
 		).unwrap();
 		//load expected from serde serialization
-		let serial_path = Path::new("./tests/resources/expected/docs/5407953830.pdf.json");
+		let serial_path = Path::new("./tests/resources/expected/docs/5407953830.pdf.windows.json");
 		let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
 		let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
 		
 		assert_eq!(result, expected);
     }
 
-    //this one is large and slow
+    #[cfg(target_os = "linux")]
+	#[test]
+    fn extract_text_from_file_docs_5407953830_pdf() {
+		let pre_scanned_items: Vec<FileListItem> = Vec::new();
+		let keep_going = Arc::new(AtomicBool::new(true));
+		let keep_going_flag = keep_going.clone();
+		let result = extract_text_from_file(
+			Path::new("./tests/resources/files_to_scan/docs/5407953830.pdf"),
+			pre_scanned_items,
+			keep_going_flag
+		).unwrap();
+		//load expected from serde serialization
+		let serial_path = Path::new("./tests/resources/expected/docs/5407953830.pdf.linux.json");
+		let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
+		let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
+		
+		assert_eq!(result, expected);
+    }
+
+    #[cfg(target_os = "windows")]
+	#[test]
+    fn extract_text_from_file_emails_msg_in_msg() {
+		let pre_scanned_items: Vec<FileListItem> = Vec::new();
+		let keep_going = Arc::new(AtomicBool::new(true));
+		let keep_going_flag = keep_going.clone();
+		let result = extract_text_from_file(
+			Path::new("./tests/resources/files_to_scan/emails/msg_in_msg.msg"),
+			pre_scanned_items,
+			keep_going_flag
+		).unwrap();
+		//load expected from serde serialization
+		let serial_path = Path::new("./tests/resources/expected/emails/msg_in_msg.msg.windows.json");
+		let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
+		let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
+		
+		assert_eq!(result, expected);
+    }
+
+    #[cfg(target_os = "linux")]
+	#[test]
+    fn extract_text_from_file_emails_msg_in_msg() {
+		let pre_scanned_items: Vec<FileListItem> = Vec::new();
+		let keep_going = Arc::new(AtomicBool::new(true));
+		let keep_going_flag = keep_going.clone();
+		let result = extract_text_from_file(
+			Path::new("./tests/resources/files_to_scan/emails/msg_in_msg.msg"),
+			pre_scanned_items,
+			keep_going_flag
+		).unwrap();
+		//load expected from serde serialization
+		let serial_path = Path::new("./tests/resources/expected/emails/msg_in_msg.msg.linux.json");
+		let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
+		let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
+		
+		assert_eq!(result, expected);
+    }
+
+	//this one is large and slow
 	// #[test]
     // fn extract_text_from_file_emails_msg_in_msg_in_msg() {
 	// 	let pre_scanned_items: Vec<FileListItem> = Vec::new();
@@ -1172,23 +1230,5 @@ mod tests {
 		
 	// 	assert_eq!(result, expected);
     // }
-
-    #[test]
-    fn extract_text_from_file_emails_msg_in_msg() {
-		let pre_scanned_items: Vec<FileListItem> = Vec::new();
-		let keep_going = Arc::new(AtomicBool::new(true));
-		let keep_going_flag = keep_going.clone();
-		let result = extract_text_from_file(
-			Path::new("./tests/resources/files_to_scan/emails/msg_in_msg.msg"),
-			pre_scanned_items,
-			keep_going_flag
-		).unwrap();
-		//load expected from serde serialization
-		let serial_path = Path::new("./tests/resources/expected/emails/msg_in_msg.msg.json");
-		let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
-		let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
-		
-		assert_eq!(result, expected);
-    }
 
 }
