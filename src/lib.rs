@@ -651,7 +651,8 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 				// pdfimages -list "C:\Users\hrag\Sync\Programming\python\file\test_text_extract\docs\fiche d'evaluation du stagiaire - Loïc Vital.pdf" C:\Users\hrag\AppData\Local\Temp\extract_text_from_file\image
 				// https://www.xpdfreader.com/pdfimages-man.html
 				let pdfimages_outpath = tempfiles_location().join(&achive_uuid_subdir).join(format!("page {} image", page_number));
-				if cfg!(target_os = "windows") {
+				#[cfg(target_os = "windows")]
+				{
 					let mut command = Command::new("pdfimages");
 					command
 						.arg("-f").arg(format!("{}", page_number))
@@ -684,7 +685,9 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							panic!("Failed to execute {:?}: {}", command.get_program(), e);
 						}
 					}
-				} else {
+				}
+				#[cfg(target_os = "linux")]
+				{
 					//linux, first get list of images in page, then extract
 					let mut command = Command::new("pdfimages");
 					command
@@ -984,7 +987,7 @@ fn extract_text_from_subfile(file_list_item: &SubFileItem) -> Result<String, Box
 				}
 			}
 		}
-		"jpeg"| "jpg" | "png" | "ppm" => {
+		"jpeg"| "jpg" | "pgm" | "png" | "ppm" => {
 			//tesseract
 			match ocr(file_list_item.filepath.as_path()) {
 				Ok(extracted_text) => {
@@ -1134,17 +1137,54 @@ mod tests {
     }
 
     #[test]
-    fn extract_text_from_file_emails_msg_in_msg_in_msg() {
+    fn extract_text_from_file_docs_5407953830_pdf() {
 		let pre_scanned_items: Vec<FileListItem> = Vec::new();
 		let keep_going = Arc::new(AtomicBool::new(true));
 		let keep_going_flag = keep_going.clone();
 		let result = extract_text_from_file(
-			Path::new("./tests/resources/files_to_scan/emails/msg_in_msg_in_msg.msg"),
+			Path::new("./tests/resources/files_to_scan/docs/5407953830.pdf"),
 			pre_scanned_items,
 			keep_going_flag
 		).unwrap();
 		//load expected from serde serialization
-		let serial_path = Path::new("./tests/resources/expected/emails/msg_in_msg_in_msg.msg.json");
+		let serial_path = Path::new("./tests/resources/expected/docs/5407953830.pdf.json");
+		let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
+		let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
+		
+		assert_eq!(result, expected);
+    }
+
+    //this one is large and slow
+	// #[test]
+    // fn extract_text_from_file_emails_msg_in_msg_in_msg() {
+	// 	let pre_scanned_items: Vec<FileListItem> = Vec::new();
+	// 	let keep_going = Arc::new(AtomicBool::new(true));
+	// 	let keep_going_flag = keep_going.clone();
+	// 	let result = extract_text_from_file(
+	// 		Path::new("./tests/resources/files_to_scan/emails/msg_in_msg_in_msg.msg"),
+	// 		pre_scanned_items,
+	// 		keep_going_flag
+	// 	).unwrap();
+	// 	//load expected from serde serialization
+	// 	let serial_path = Path::new("./tests/resources/expected/emails/msg_in_msg_in_msg.msg.json");
+	// 	let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
+	// 	let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
+		
+	// 	assert_eq!(result, expected);
+    // }
+
+    #[test]
+    fn extract_text_from_file_emails_msg_in_msg() {
+		let pre_scanned_items: Vec<FileListItem> = Vec::new();
+		let keep_going = Arc::new(AtomicBool::new(true));
+		let keep_going_flag = keep_going.clone();
+		let result = extract_text_from_file(
+			Path::new("./tests/resources/files_to_scan/emails/msg_in_msg.msg"),
+			pre_scanned_items,
+			keep_going_flag
+		).unwrap();
+		//load expected from serde serialization
+		let serial_path = Path::new("./tests/resources/expected/emails/msg_in_msg.msg.json");
 		let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
 		let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
 		
