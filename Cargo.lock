@@ -572,7 +572,7 @@ dependencies = [
 [[package]]
 name = "helper_lib"
 version = "0.1.0"
-source = "git+https://github.com/rayzinnz/rust-helper-lib.git#6af46310ecb65ca0402ddf30180c4cfaf91687ca"
+source = "git+https://github.com/rayzinnz/rust-helper-lib.git#d80bb1debcafd529b28e06181c6059697443eaf6"
 dependencies = [
  "chrono",
  "crossterm",
