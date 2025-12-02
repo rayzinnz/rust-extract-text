@@ -1,0 +1,63 @@
+[
+  {
+    "filename": "5407953830.pdf",
+    "parent_files": [],
+    "crc": 7639799777194161563,
+    "size": 94271,
+    "text_contents": ""
+  },
+  {
+    "filename": "page 1",
+    "parent_files": [
+      "5407953830.pdf"
+    ],
+    "crc": -4545651978398655800,
+    "size": 1017,
+    "text_contents": "Tax Invoice\r\nInvoice number: 5407953830\r\nBill to Brendon O'Sullivan Eurofins FOOD New Zealand 35 O'Rorke road Penrose Auckland 1061 New Zealand\r\nDetails .In. .v.o. .ic. .e. .n.u. .m. .b. .e.r. . . . . . . . . . . . . . . . . . . . . . . . 5. .4. .0.7. .9.5. .3.8. .3.0. . . . . . .In. .v.o. .ic. .e. .d.a. .t.e. . . . . . . . . . . . . . . . . . . . . . . . . . . . 3. .1. .O. .c. .t.2. .0.2. .5. . . . . . .B.i.l.li.n.g. . I.D. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3. .6. .9.4. .-0. .5. 9. .5. -.7. .1. 4. .9. .A.c. .c.o. .u.n. .t .I.D. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 0. .1. .C. 3. .1. 5. .-.1. 4. .B. .1.5. .1.-6818D1\r\n\r\nGoogle New Zealand Limited Level 4\r\n12 Madden Street Wynyard Quarter\r\nAuckland 1010 New Zealand\r\nGST number: 93-685-547\r\n\r\nGoogle Cloud\r\nTotal in NZD\r\nSummary for 1 Oct 2025 - 31 Oct 2025\r\nSubtotal in NZD GST (15%) Total in NZD\r\n\r\nNZ$0.00\r\nNZ$0.00 NZ$0.00 NZ$0.00\r\n\r\nYou will be automatically charged for any amount due.\r\n\r\nPage 1 of 2\r\n\r\n\f"
+  },
+  {
+    "filename": "page 1 image-0000.ppm",
+    "parent_files": [
+      "5407953830.pdf"
+    ],
+    "crc": -2779148071317752069,
+    "size": 25610,
+    "text_contents": ""
+  },
+  {
+    "filename": "page 1 image-0001.pgm",
+    "parent_files": [
+      "5407953830.pdf"
+    ],
+    "crc": 3430750893419546970,
+    "size": 8546,
+    "text_contents": "Google\n"
+  },
+  {
+    "filename": "page 2",
+    "parent_files": [
+      "5407953830.pdf"
+    ],
+    "crc": -2142922809780051993,
+    "size": 384,
+    "text_contents": "Tax Invoice\r\n\r\nInvoice number: 5407953830\r\n\r\nUse the Google Cloud Platform cost table to view and download detailed usage data such as per-project costs: console.cloud.google.com/billing/01C315-14B151-6818D1/reports/tabular.\r\n\r\nDescription Google Cloud - Fee for October 2025\r\n\r\nSubtotal in NZD GST (15%)\r\nTotal in NZD\r\n\r\nAmount(NZ$) 0.00\r\nNZ$0.00 NZ$0.00\r\nNZ$0.00\r\n\r\nPage 2 of 2\r\n\r\n\f"
+  },
+  {
+    "filename": "page 2 image-0000.ppm",
+    "parent_files": [
+      "5407953830.pdf"
+    ],
+    "crc": 7827539106675824233,
+    "size": 10381,
+    "text_contents": ""
+  },
+  {
+    "filename": "page 2 image-0001.pgm",
+    "parent_files": [
+      "5407953830.pdf"
+    ],
+    "crc": 2899815401859778536,
+    "size": 3469,
+    "text_contents": "Google’\n"
+  }
+]

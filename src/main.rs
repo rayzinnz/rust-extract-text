@@ -58,8 +58,10 @@ fn main()  -> Result<(), Box<dyn Error>> {
     // }
 
 	// subpath starts from under here: ./tests/resources/files_to_scan
-	let subpath = Path::new("empty_file");
+	// let subpath = Path::new("empty_file");
+	// let subpath = Path::new("docs/5407953830.pdf");
 	// let subpath = Path::new("emails/msg_in_msg_in_msg.msg");
+	let subpath = Path::new("emails/msg_in_msg.msg");
 
 	let path = Path::new("./tests/resources/files_to_scan").join(subpath);
 	let file_crc = checksum_file(Crc64Nvme, path.to_str().unwrap(), None).unwrap() as i64;
@@ -70,7 +72,7 @@ fn main()  -> Result<(), Box<dyn Error>> {
 
 	// debug!("{:#?}", contents);
 
-	let store_serialized_contents_to_testing_file = true;
+	let store_serialized_contents_to_testing_file = false;
 	if store_serialized_contents_to_testing_file {
 		//store serialized contents to file
 		let mut serial_path = Path::new("./tests/resources/expected").join(subpath);
@@ -88,6 +90,7 @@ fn main()  -> Result<(), Box<dyn Error>> {
     info!("Finished traversing directory");
     
 	keep_going.store(false, Ordering::Relaxed);
+	#[cfg(target_os = "linux")]
 	if let Err(e) = watch_for_quit_handle.join() {
 		error!("watch_for_quit thread join error: {:?}", e);
 	}
