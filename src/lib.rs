@@ -755,75 +755,88 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 				parent_files: parent_files.clone(),
 				ok_to_extract_text: false,
 			});
-			let mut workbook = open_workbook_auto(filepath)?;
-
-			if let Ok(vbaop) = workbook.vba_project() {
-				if let Some(vba) = vbaop {
-					let vba_modules = vba.get_module_names();
-					trace!("vba_modules: {:#?}", vba_modules);
-					for module_name in vba_modules {
-						let module = vba.get_module(module_name).unwrap();
-						let mut module_name_filename_safe = module_name.to_string();
-						module_name_filename_safe.retain(|c| !FILENAME_ILLEGAL_CHARS.contains(&c));
-						let outpath = tempfiles_location().join(&achive_uuid_subdir).join(format!("VBA_{}", module_name_filename_safe));
-						fs::create_dir_all(outpath.parent().unwrap())?;
-						match fs::write(&outpath, module) {
-							Ok(_) => {
-								let mut new_parent_files = parent_files.clone();
-								new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-								extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
-							},
-							Err(e) => {
-								error!("Error writing to file {:?}: {}", outpath, e)
-							},
-						}
-					}
-				}
-			}
-
-			let sheets_metadata = workbook.sheets_metadata().to_owned();
-			for sheet in sheets_metadata {
-				let mut text: String = String::new();
-				// trace!("sheet_metadata: {:?}", sheet);
-				if sheet.typ == calamine::SheetType::WorkSheet {
-					trace!("Reading sheet: {}", sheet.name);
-					if let Ok(range) = workbook.worksheet_range(&sheet.name) {
-						for row in range.rows() {
-							let mut line: String = String::new();
-							for (icell, cell) in row.iter().enumerate() {
-								if icell>0 {
-									line.push_str("\t");
+			//let mut workbook = open_workbook_auto(filepath)?;
+			match open_workbook_auto(filepath) {
+				Ok(mut workbook) => {
+					if let Ok(vbaop) = workbook.vba_project() {
+						if let Some(vba) = vbaop {
+							let vba_modules = vba.get_module_names();
+							trace!("vba_modules: {:#?}", vba_modules);
+							for module_name in vba_modules {
+								let module = vba.get_module(module_name).unwrap();
+								let mut module_name_filename_safe = module_name.to_string();
+								module_name_filename_safe.retain(|c| !FILENAME_ILLEGAL_CHARS.contains(&c));
+								let outpath = tempfiles_location().join(&achive_uuid_subdir).join(format!("VBA_{}", module_name_filename_safe));
+								fs::create_dir_all(outpath.parent().unwrap())?;
+								match fs::write(&outpath, module) {
+									Ok(_) => {
+										let mut new_parent_files = parent_files.clone();
+										new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
+										extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+									},
+									Err(e) => {
+										error!("Error writing to file {:?}: {}", outpath, e)
+									},
 								}
-								line.push_str(cell.as_string().unwrap_or_default().as_str());
-							}
-							if !line.trim().is_empty() {
-								line.push_str("\n");
-								text.push_str(&line);
 							}
 						}
 					}
 
-					if !text.is_empty() {
-						let mut sheet_name_filename_safe = sheet.name.clone();
-						sheet_name_filename_safe.retain(|c| !FILENAME_ILLEGAL_CHARS.contains(&c));
-						let outpath = tempfiles_location().join(&achive_uuid_subdir).join(format!("{}", sheet_name_filename_safe));
-						fs::create_dir_all(outpath.parent().unwrap())?;
-						match fs::write(&outpath, text) {
-							Ok(_) => {
-								let mut new_parent_files = parent_files.clone();
-								new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-								extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
-							},
-							Err(e) => {
-								error!("Error writing to file {:?}: {}", outpath, e)
-							},
+					let sheets_metadata = workbook.sheets_metadata().to_owned();
+					for sheet in sheets_metadata {
+						let mut text: String = String::new();
+						// trace!("sheet_metadata: {:?}", sheet);
+						if sheet.typ == calamine::SheetType::WorkSheet {
+							trace!("Reading sheet: {}", sheet.name);
+							if let Ok(range) = workbook.worksheet_range(&sheet.name) {
+								for row in range.rows() {
+									let mut line: String = String::new();
+									for (icell, cell) in row.iter().enumerate() {
+										if icell>0 {
+											line.push_str("\t");
+										}
+										line.push_str(cell.as_string().unwrap_or_default().as_str());
+									}
+									if !line.trim().is_empty() {
+										line.push_str("\n");
+										text.push_str(&line);
+									}
+								}
+							}
+
+							if !text.is_empty() {
+								let mut sheet_name_filename_safe = sheet.name.clone();
+								sheet_name_filename_safe.retain(|c| !FILENAME_ILLEGAL_CHARS.contains(&c));
+								let outpath = tempfiles_location().join(&achive_uuid_subdir).join(format!("{}", sheet_name_filename_safe));
+								fs::create_dir_all(outpath.parent().unwrap())?;
+								match fs::write(&outpath, text) {
+									Ok(_) => {
+										let mut new_parent_files = parent_files.clone();
+										new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
+										extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+									},
+									Err(e) => {
+										error!("Error writing to file {:?}: {}", outpath, e)
+									},
+								}
+							}
+						} else {
+							trace!("Skipping sheet {} of type {:?}", sheet.name, sheet.typ);
 						}
 					}
-				} else {
-					trace!("Skipping sheet {} of type {:?}", sheet.name, sheet.typ);
+
+				}
+				Err(err) => {
+					match err {
+						calamine::Error::Ods(calamine::OdsError::Password)
+						| calamine::Error::Xlsb(calamine::XlsbError::Password)
+						| calamine::Error::Xlsx(calamine::XlsxError::Password) => {
+							info!("Cannot extract text from password protected file: {:?}", filepath);
+						}
+						_ => return Err(Box::new(err)),
+					}
 				}
 			}
-
 		}
 		"zip" => {
 			list_of_files_in_archive.push(SubFileItem {
