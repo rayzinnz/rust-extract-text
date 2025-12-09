@@ -929,14 +929,14 @@ fn read_text_from_file(filepath: &Path) -> Result<String, Box<dyn Error>> {
 	let file_encoding = detect_encoding(filepath, false);
 	debug!("file_encoding: {:?}", file_encoding);
 	let mut contents = read_file_with_encoding(filepath, file_encoding)?;
-	if file_encoding == WINDOWS_1252 {
+	// if file_encoding == WINDOWS_1252 {
 		//if no 0 or 255 bytes the in the contents, assume this is a text file and convert accented characters to base letters
 		if !(contents.as_bytes().contains(&0) || contents.as_bytes().contains(&255)) {
 			contents = convert_accented_manual(&contents);
 		}
 		//clean all but english letters
 		contents.retain(|c| c.is_ascii_graphic() || c.is_whitespace());
-	}
+	// }
 	// debug!("contents: {:?}", contents);
 	return Ok(contents);
 }
@@ -1134,6 +1134,26 @@ mod tests {
 		let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
 		
 		assert_eq!(result, expected);
+    }
+
+	#[test]
+    fn extract_text_from_file_txt_utf8() {
+		let pre_scanned_items: Vec<FileListItem> = Vec::new();
+		let keep_going = Arc::new(AtomicBool::new(true));
+		let keep_going_flag = keep_going.clone();
+		let result = extract_text_from_file(
+			Path::new("./tests/resources/files_to_scan/txt/text_utf8.txt"),
+			pre_scanned_items,
+			keep_going_flag
+		).unwrap();
+		// //load expected from serde serialization
+		// let serial_path = Path::new("./tests/resources/expected/empty_file.json");
+		// let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
+		// let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
+		//check each byte of contents
+		println!("*** {}", result.len());
+		
+		// assert_eq!(result, None);
     }
 
     #[cfg(target_os = "windows")]

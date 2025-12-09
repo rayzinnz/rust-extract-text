@@ -37,7 +37,7 @@ fn main()  -> Result<(), Box<dyn Error>> {
 
     let keep_going = Arc::new(AtomicBool::new(true));
     let keep_going_flag = keep_going.clone();
-    let watch_for_quit_handle = thread::spawn(move || {watch_for_quit(keep_going_flag);});
+    let _watch_for_quit_handle = thread::spawn(move || {watch_for_quit(keep_going_flag);});
 
 	let starting_path: PathBuf = PathBuf::from("./tests/resources/files_to_scan");
 
@@ -59,10 +59,13 @@ fn main()  -> Result<(), Box<dyn Error>> {
 
 	// subpath starts from under here: ./tests/resources/files_to_scan
 	// let subpath = Path::new("empty_file");
+	// let subpath = Path::new("txt/text_utf8.txt");
+	let subpath = Path::new("txt/text_utf16le.txt");
 	// let subpath = Path::new("docs/5407953830.pdf");
 	// let subpath = Path::new("emails/msg_in_msg_in_msg.msg");
-	let subpath = Path::new("emails/msg_in_msg.msg");
+	// let subpath = Path::new("emails/msg_in_msg.msg");
 
+	// let path = Path::new(r"C:\Users\hrag\Sync\desktop.ini");
 	let path = Path::new("./tests/resources/files_to_scan").join(subpath);
 	let file_crc = checksum_file(Crc64Nvme, path.to_str().unwrap(), None).unwrap() as i64;
 	debug!("file_crc: {}", file_crc);
@@ -70,7 +73,15 @@ fn main()  -> Result<(), Box<dyn Error>> {
 	let keep_going_flag = keep_going.clone();
 	let contents = extract_text_from_file(&path, pre_scanned_items, keep_going_flag)?;
 
-	// debug!("{:#?}", contents);
+	debug!("{:#?}", contents);
+
+	let text_contents = contents.first().unwrap().text_contents.as_ref().unwrap();
+	println!("{}", text_contents);
+	println!("{}", text_contents.len());
+	for b in text_contents.as_bytes() {
+		print!("{}-", b);
+	}
+	println!();
 
 	let store_serialized_contents_to_testing_file = false;
 	if store_serialized_contents_to_testing_file {
@@ -91,7 +102,7 @@ fn main()  -> Result<(), Box<dyn Error>> {
     
 	keep_going.store(false, Ordering::Relaxed);
 	#[cfg(target_os = "linux")]
-	if let Err(e) = watch_for_quit_handle.join() {
+	if let Err(e) = _watch_for_quit_handle.join() {
 		error!("watch_for_quit thread join error: {:?}", e);
 	}
 
