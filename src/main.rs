@@ -63,6 +63,9 @@ fn main()  -> Result<(), Box<dyn Error>> {
 	// let subpath = Path::new("txt/text_utf16le.txt");
 	// let subpath = Path::new("docs/5407953830.pdf");
 	let subpath = Path::new("docs/pass_protected_with_readable_text.xls");
+	// let subpath = Path::new("docs/pass_protected.ods");
+	// let subpath = Path::new("docs/pass_protected.xlsx");
+	// let subpath = Path::new("docs/pass_protected.xlsb");
 	// let subpath = Path::new("emails/msg_in_msg_in_msg.msg");
 	// let subpath = Path::new("emails/msg_in_msg.msg");
 
