@@ -29,7 +29,7 @@ use std::{
 };
 use uuid::Uuid;
 use walkdir::WalkDir;
-use zip::ZipArchive;
+use zip::{result::ZipError, ZipArchive};
 
 mod ancillary;
 use ancillary::tempfiles_location;
@@ -853,27 +853,43 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 			let mut archive = ZipArchive::new(file)?;
 			debug!("Total entries: {}", archive.len());
 			for i in 0..archive.len() {
-				let mut zipfile = archive.by_index(i)?;
-				// debug!("  {}: {} ({} bytes)", i, zipfile.name(), zipfile.size());
-				let outpath = tempfiles_location().join(&achive_uuid_subdir).join(zipfile.mangled_name());
-				if zipfile.is_dir() {
-					fs::create_dir_all(&outpath)?;
-					// debug!("Created directory: {:?}", outpath);
-				} else {
-					// Handle files
-					if let Some(parent) = outpath.parent() {
-						fs::create_dir_all(parent)?;
-					}
+				match archive.by_index(i) {
+					Ok(mut zipfile) => {
+						if zipfile.encrypted() {
+							info!("Zip file is encrypted, no text extracted {:?}", filepath);
+							break;
+						}
+						// debug!("  {}: {} ({} bytes)", i, zipfile.name(), zipfile.size());
+						let outpath = tempfiles_location().join(&achive_uuid_subdir).join(zipfile.mangled_name());
+						if zipfile.is_dir() {
+							fs::create_dir_all(&outpath)?;
+							// debug!("Created directory: {:?}", outpath);
+						} else {
+							// Handle files
+							if let Some(parent) = outpath.parent() {
+								fs::create_dir_all(parent)?;
+							}
 
-					// Extract the file
-					let mut outfile = File::create(&outpath)?;
-					io::copy(&mut zipfile, &mut outfile)?;
-					debug!("Extracted: {:?}", outpath);
-					let mut new_parent_files = parent_files.clone();
-					new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-					// new_parent_files passes ownership instead of reference, because we no longer need it after passing into this function
-					extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
-					//filepath.file_name().unwrap_or_default().to_string_lossy().to_string()
+							// Extract the file
+							let mut outfile = File::create(&outpath)?;
+							io::copy(&mut zipfile, &mut outfile)?;
+							debug!("Extracted: {:?}", outpath);
+							let mut new_parent_files = parent_files.clone();
+							new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
+							// new_parent_files passes ownership instead of reference, because we no longer need it after passing into this function
+							extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+							//filepath.file_name().unwrap_or_default().to_string_lossy().to_string()
+						}
+					}
+					Err(err) => {
+						match err {
+							ZipError::UnsupportedArchive(errtxt) => {
+								info!("Zip file not supported: ({}) {:?}", errtxt, filepath);
+								break;
+							}
+							_ => return Err(Box::new(err)),
+						}
+					}
 				}
 			}
 		}
