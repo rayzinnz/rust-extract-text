@@ -501,7 +501,10 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							let filesubpath2 = filesubpath.clone().join(&msg_placeholder_filename);
 							//recurse into path
 							let (subject, body, sub_paths2) = msg_get_contents(&mut cfbf, sub_path.join("__substg1.0_3701000D"));
-							let outpath = tempfiles_location().join(&achive_uuid_subdir).join(achive_uuid_msg_subdir).join("body.txt");
+							// println!("{:?}", sub_path.components().last().unwrap());
+							// println!("{:?}", subject);
+							// println!("{:?}", body);
+							let outpath = tempfiles_location().join(&achive_uuid_subdir).join(achive_uuid_msg_subdir).join(sub_path.components().last().unwrap()).join("body.txt");
 							fs::create_dir_all(outpath.parent().unwrap())?;
 							let outtext = subject + "\n\n" + &body;
 							match fs::write(&outpath, outtext) {
