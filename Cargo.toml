@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-calamine = "0.31.0"
+calamine = { git = "https://github.com/rayzinnz/calamine.git" }
 cfb = "0.12.0"
 crc-fast = "1.6.0"
 encoding_rs = "0.8.35"

@@ -60,8 +60,9 @@ fn main()  -> Result<(), Box<dyn Error>> {
 	// subpath starts from under here: ./tests/resources/files_to_scan
 	// let subpath = Path::new("empty_file");
 	// let subpath = Path::new("txt/text_utf8.txt");
-	let subpath = Path::new("txt/text_utf16le.txt");
+	// let subpath = Path::new("txt/text_utf16le.txt");
 	// let subpath = Path::new("docs/5407953830.pdf");
+	let subpath = Path::new("docs/pass_protected_with_readable_text.xls");
 	// let subpath = Path::new("emails/msg_in_msg_in_msg.msg");
 	// let subpath = Path::new("emails/msg_in_msg.msg");
 
@@ -75,13 +76,13 @@ fn main()  -> Result<(), Box<dyn Error>> {
 
 	debug!("{:#?}", contents);
 
-	let text_contents = contents.first().unwrap().text_contents.as_ref().unwrap();
-	println!("{}", text_contents);
-	println!("{}", text_contents.len());
-	for b in text_contents.as_bytes() {
-		print!("{}-", b);
-	}
-	println!();
+	// let text_contents = contents.first().unwrap().text_contents.as_ref().unwrap();
+	// println!("{}", text_contents);
+	// println!("{}", text_contents.len());
+	// for b in text_contents.as_bytes() {
+	// 	print!("{}-", b);
+	// }
+	// println!();
 
 	let store_serialized_contents_to_testing_file = false;
 	if store_serialized_contents_to_testing_file {

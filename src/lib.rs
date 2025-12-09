@@ -755,28 +755,28 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 				parent_files: parent_files.clone(),
 				ok_to_extract_text: false,
 			});
-
 			let mut workbook = open_workbook_auto(filepath)?;
 
-			if let Some(Ok(mut vba)) = workbook.vba_project() {
-				let vba = vba.to_mut();
-				let vba_modules = vba.get_module_names();
-				trace!("vba_modules: {:#?}", vba_modules);
-				for module_name in vba_modules {
-					let module = vba.get_module(module_name).unwrap();
-					let mut module_name_filename_safe = module_name.to_string();
-					module_name_filename_safe.retain(|c| !FILENAME_ILLEGAL_CHARS.contains(&c));
-					let outpath = tempfiles_location().join(&achive_uuid_subdir).join(format!("VBA_{}", module_name_filename_safe));
-					fs::create_dir_all(outpath.parent().unwrap())?;
-					match fs::write(&outpath, module) {
-						Ok(_) => {
-							let mut new_parent_files = parent_files.clone();
-							new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-							extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
-						},
-						Err(e) => {
-							error!("Error writing to file {:?}: {}", outpath, e)
-						},
+			if let Ok(vbaop) = workbook.vba_project() {
+				if let Some(vba) = vbaop {
+					let vba_modules = vba.get_module_names();
+					trace!("vba_modules: {:#?}", vba_modules);
+					for module_name in vba_modules {
+						let module = vba.get_module(module_name).unwrap();
+						let mut module_name_filename_safe = module_name.to_string();
+						module_name_filename_safe.retain(|c| !FILENAME_ILLEGAL_CHARS.contains(&c));
+						let outpath = tempfiles_location().join(&achive_uuid_subdir).join(format!("VBA_{}", module_name_filename_safe));
+						fs::create_dir_all(outpath.parent().unwrap())?;
+						match fs::write(&outpath, module) {
+							Ok(_) => {
+								let mut new_parent_files = parent_files.clone();
+								new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
+								extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+							},
+							Err(e) => {
+								error!("Error writing to file {:?}: {}", outpath, e)
+							},
+						}
 					}
 				}
 			}
