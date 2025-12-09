@@ -1,0 +1,113 @@
+[
+  {
+    "filename": "msg_in_msg.msg",
+    "parent_files": [],
+    "crc": 1939187758632739425,
+    "size": 338944,
+    "text_contents": ""
+  },
+  {
+    "filename": "body.txt",
+    "parent_files": [
+      "msg_in_msg.msg"
+    ],
+    "crc": -7344445880314568158,
+    "size": 240,
+    "text_contents": "msg_in_msg\n\n \r\n\r\nVerified Sender: This email is from an internal and/or verified domain which passed security verifications. Remember to still be cautious with personal data and follow company policies.\r\n\r\n\r\nThis contains a msg in a msg\r\n\r\n"
+  },
+  {
+    "filename": "Google Cloud Platform & APIs Your invoice is available for 01C315-14B151-6818D1.msg",
+    "parent_files": [
+      "msg_in_msg.msg"
+    ],
+    "crc": 0,
+    "size": 0,
+    "text_contents": ""
+  },
+  {
+    "filename": "body.txt",
+    "parent_files": [
+      "msg_in_msg.msg",
+      "Google Cloud Platform & APIs Your invoice is available for 01C315-14B151-6818D1.msg"
+    ],
+    "crc": -4439136636529775239,
+    "size": 4317,
+    "text_contents": "Google Cloud Platform & APIs: Your invoice is available for 01C315-14B151-6818D1\n\n \r\n\r\nUnverified Sender: The sender of this email has not been verified. Review the content of the message carefully and verify the identity of the sender before acting on this email: replying, opening attachments or clicking links.\r\n\r\n\r\n                                                                                                                                                                                                                                                                                                                                                                                                                                                                           \r\n                                                                                                                                                                                                                                                                                                                                                                                                                                                                           \r\n <https://services.google.com/fh/files/emails/google_cloud_lockup_rgb_2900x512px.png> \t\r\nYour Google Cloud Platform & APIs monthly invoice is available. Please find the PDF document attached at the bottom of this email. \r\nIMPORTANT: The balance will be automatically charged so you don't need to take any action. \r\nDomain\t 01C315-14B151-6818D1\t \r\nName\t Eurofins FOOD New Zealand\t \r\nInvoice number\t 5407953830\t \r\nPayments profile ID\t 3694-0595-7149\t \r\nIf you want to view your payment history or update your payment info, visit your account by following the instructions below: \r\n\r\n1.\tSign in to your Google Cloud Console <https://c.gle/APy2Ad3Vu7pnG2suDOY65vkD5AOeVaxPWObhmnOjr8RpzWNJuL6JRif6DB0Achbk9Ve5ZoUYQxPWN5XuYeadMQxGv34tRQj9xBINumcrMye3SejENAkm8yvsDA8WOsST0w> \r\n\r\n\t\r\n\r\n2.\tOpen the console Navigation menu, and select Billing \r\n\r\n\tIf you have more than one Cloud Billing account: \r\n\r\n\t*\tSelect Go to linked billing account to manage Cloud Billing for the current project\r\n\t*\tSelect Manage billing accounts to locate a different Cloud Billing account, then select the account you want to manage\r\n\r\nTo review your current subscriptions, payment plans and other relevant details, go to the Subscriptions page in the Admin console <https://c.gle/APy2Ad2ulEQ2tC4_K_5Nug5p3FtojhqOBpgZLn4QpuZT4wX2r9tl0ai8I9MVtI6Kv0GZ5b5jhO_0HSZw1ZqNH8ivN0-WDeBk7L3lBRY8msnqZsFp_zHq_VSPcCy-eGSGlW9n27xowuQlFxx3g4gP8GkD> . \r\n \t \r\n <https://c.gle/APy2Ad0OiSPIKbXD5iSrdOI8hA7qouk3hbopJ2qxTYMUFCup5vbr5yxJSvjG1-VoSOmbFS1Uzf9snz7gwii-aB4U_CxWc2PhwyAZCGthUnzlvxQcqdRDBjDG28Tcxeq4fkvHPV0AuX7uM9CmCy6ofQ> \tHelp Centre <https://c.gle/APy2Ad0OiSPIKbXD5iSrdOI8hA7qouk3hbopJ2qxTYMUFCup5vbr5yxJSvjG1-VoSOmbFS1Uzf9snz7gwii-aB4U_CxWc2PhwyAZCGthUnzlvxQcqdRDBjDG28Tcxeq4fkvHPV0AuX7uM9CmCy6ofQ> \t\r\n  \t  <https://c.gle/APy2Ad1YK9dyEKwMcukWociL3Eow1pI3bWbEMjoYbmhlIqpCN1qkoNyZOU8b6OxL60WlLkH0cKBDoTJPgnJHRh3XESH4Cu0wYlhcmXAjd38DdBC_y0GcFJd7jt6Be96SDcUjdki-4kL65Fy7qr9BGzDqPhppQQwdNFYrqgQvN7A> \tContact us <https://c.gle/APy2Ad1YK9dyEKwMcukWociL3Eow1pI3bWbEMjoYbmhlIqpCN1qkoNyZOU8b6OxL60WlLkH0cKBDoTJPgnJHRh3XESH4Cu0wYlhcmXAjd38DdBC_y0GcFJd7jt6Be96SDcUjdki-4kL65Fy7qr9BGzDqPhppQQwdNFYrqgQvN7A> \t\r\nGoogle Cloud Platform customer ID: 01C315-14B151-6818D1 \r\nPayments profile ID: 3694-0595-7149 \r\nGoogle New Zealand Limited, Level 4, 12 Madden Street, Wynyard Quarter, Auckland 1010, New Zealand \r\nTo stop receiving emails about this payments profile, you can unsubscribe <https://c.gle/APy2Ad3aX40ukpzRI90VV2yQW5f3xhTrnfT5ny62W12EtgZBhKjoGEg7v_D6Ab3LbSEL-iuUqWeAONq115TTPa8rnPj0iDi2p-UiGAXYu37dJDLxYWCDembtH2ZWlcKoh4QqBxyF6yc2XzV3uBtxGGiaY0F_N7xALucHl_u_YhcYL6oi0cX1QMICFP1FsJyN6BPY154SC9x9Honi-fRpCr_Z_AXj6V762qhccAgoi40dU3D-5_63OCnA3fjjgC38sGoRooBBx8Tei4Joe8CNmHa7IAWTci_yms5j4OFeODVY4IXm4yv73k8f08fXFBpBL7stEyQNu4wq4FBUnZEg5ksrpF1D-kJhWnzVFYv9OQX5MnX1QVcrpYpqjJCqYEeUuzO9fdGaIep8JTU_sPORm7KcePEU_xw> . \r\nYou have received this mandatory service announcement to update you about important changes to Google Cloud Platform & APIs or your account. \r\n <http://services.google.com/fh/files/emails/wa_google_logo.png> \r\n"
+  },
+  {
+    "filename": "5407953830.pdf",
+    "parent_files": [
+      "msg_in_msg.msg",
+      "Google Cloud Platform & APIs Your invoice is available for 01C315-14B151-6818D1.msg"
+    ],
+    "crc": 7639799777194161563,
+    "size": 94271,
+    "text_contents": ""
+  },
+  {
+    "filename": "page 1",
+    "parent_files": [
+      "msg_in_msg.msg",
+      "Google Cloud Platform & APIs Your invoice is available for 01C315-14B151-6818D1.msg",
+      "5407953830.pdf"
+    ],
+    "crc": -544942991688590233,
+    "size": 850,
+    "text_contents": "Google New Zealand Limited\nLevel 4\n12 Madden Street\n\nTax Invoice\n\nWynyard Quarter\nAuckland 1010\n\nInvoice number: 5407953830\n\nNew Zealand\nGST number: 93-685-547\n\nBill to\nBrendon O'Sullivan\nEurofins FOOD New Zealand\n35 O'Rorke road\nPenrose\nAuckland 1061\nNew Zealand\n\nDetails\n\nGoogle Cloud\n\n..............................................................\nInvoice\nnumber\n5407953830\n..............................................................\nInvoice\ndate\n31 Oct 2025\n\nTotal in NZD\n\n..............................................................\nBilling\nID\n3694-0595-7149\n..............................................................\nAccount\nID\n01C315-14B151-6818D1\n\nNZ$0.00\n\nSummary for 1 Oct 2025 - 31 Oct 2025\n\nSubtotal in NZD\n\nNZ$0.00\n\nGST (15%)\n\nNZ$0.00\n\nTotal in NZD\n\nNZ$0.00\n\nYou will be automatically charged for any amount due.\n\nPage 1 of 2\n\n\f"
+  },
+  {
+    "filename": "page 1 image-000.ppm",
+    "parent_files": [
+      "msg_in_msg.msg",
+      "Google Cloud Platform & APIs Your invoice is available for 01C315-14B151-6818D1.msg",
+      "5407953830.pdf"
+    ],
+    "crc": -2779148071317752069,
+    "size": 25610,
+    "text_contents": ""
+  },
+  {
+    "filename": "page 1 image-001.ppm",
+    "parent_files": [
+      "msg_in_msg.msg",
+      "Google Cloud Platform & APIs Your invoice is available for 01C315-14B151-6818D1.msg",
+      "5407953830.pdf"
+    ],
+    "crc": 5790551740779431704,
+    "size": 25610,
+    "text_contents": "Google\n"
+  },
+  {
+    "filename": "page 2",
+    "parent_files": [
+      "msg_in_msg.msg",
+      "Google Cloud Platform & APIs Your invoice is available for 01C315-14B151-6818D1.msg",
+      "5407953830.pdf"
+    ],
+    "crc": -7748412102472442697,
+    "size": 375,
+    "text_contents": "Tax Invoice\n\nInvoice number: 5407953830\n\nUse the Google Cloud Platform cost table to view and download detailed usage data such as per-project costs:\nconsole.cloud.google.com/billing/01C315-14B151-6818D1/reports/tabular.\n\nDescription\n\nAmount(NZ$)\n\nGoogle Cloud – Fee for October 2025\n\n0.00\nSubtotal in NZD\n\nNZ$0.00\n\nGST (15%)\n\nNZ$0.00\n\nTotal in NZD\n\nNZ$0.00\n\nPage 2 of 2\n\n\f"
+  },
+  {
+    "filename": "page 2 image-000.ppm",
+    "parent_files": [
+      "msg_in_msg.msg",
+      "Google Cloud Platform & APIs Your invoice is available for 01C315-14B151-6818D1.msg",
+      "5407953830.pdf"
+    ],
+    "crc": 7827539106675824233,
+    "size": 10381,
+    "text_contents": ""
+  },
+  {
+    "filename": "page 2 image-001.ppm",
+    "parent_files": [
+      "msg_in_msg.msg",
+      "Google Cloud Platform & APIs Your invoice is available for 01C315-14B151-6818D1.msg",
+      "5407953830.pdf"
+    ],
+    "crc": -1932788791841161308,
+    "size": 10381,
+    "text_contents": "Google’\n"
+  }
+]
