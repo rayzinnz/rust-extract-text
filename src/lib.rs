@@ -447,7 +447,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							let mut stream = cfbf.open_stream(sub_path.join("__substg1.0_37010102"))?;
 							let mut data = Vec::new();
 							stream.read_to_end(&mut data)?;
-							let outpath = tempfiles_location().join(&achive_uuid_subdir).join(achive_uuid_msg_subdir).join(filename);
+							let outpath = tempfiles_location().join(&achive_uuid_subdir).join(achive_uuid_msg_subdir).join(sub_path.components().last().unwrap()).join(filename);
 							fs::create_dir_all(outpath.parent().unwrap())?;
 							match fs::write(&outpath, data) {
 								Ok(_) => {
@@ -479,7 +479,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							displayname.retain(|c| !FILENAME_ILLEGAL_CHARS.contains(&c));
 							//empty file placeholder as embedded msg
 							let msg_placeholder_filename = displayname.clone() + ".msg";
-							let outpath = tempfiles_location().join(&achive_uuid_subdir).join(achive_uuid_msg_subdir).join(&msg_placeholder_filename);
+							let outpath = tempfiles_location().join(&achive_uuid_subdir).join(achive_uuid_msg_subdir).join(sub_path.components().last().unwrap()).join(&msg_placeholder_filename);
 							fs::create_dir_all(outpath.parent().unwrap())?;
 							match fs::write(&outpath, "") {
 								Ok(_) => {
