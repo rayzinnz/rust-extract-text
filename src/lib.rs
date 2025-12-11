@@ -831,10 +831,13 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 				}
 				Err(err) => {
 					match err {
+						calamine::Error::Xls(calamine::XlsError::Cfb(msg)) => {
+							warn!("Xls Cfb error: {}, in file {:?}", msg, filepath);
+						}
 						calamine::Error::Ods(calamine::OdsError::Password)
 						| calamine::Error::Xlsb(calamine::XlsbError::Password)
 						| calamine::Error::Xlsx(calamine::XlsxError::Password) => {
-							info!("Cannot extract text from password protected file: {:?}", filepath);
+							warn!("Cannot extract text from password protected file: {:?}", filepath);
 						}
 						_ => return Err(Box::new(err)),
 					}
