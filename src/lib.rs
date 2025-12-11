@@ -870,7 +870,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 						| calamine::Error::Xlsx(calamine::XlsxError::Password) => {
 							warn!("Cannot extract text from password protected file: {:?}", filepath);
 						}
-						_ => return Err(Box::new(err)),
+						_ => {warn!("{}", err)} // return Err(Box::new(err)),
 					}
 				}
 			}
