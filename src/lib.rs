@@ -280,20 +280,31 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 
 			let outpath = tempfiles_location().join(&achive_uuid_subdir);
 			// ignore returns and errors, if bad archive just skip
-			let _ = decompress_file_with_password(filepath, &outpath, "a4".into());
-			debug!("Extracted 7z to: {:?}", outpath);
+			match decompress_file_with_password(filepath, &outpath, "a4".into()) {
+				Ok(()) => {
+					debug!("Extracted 7z to: {:?}", outpath);
 
-			// Walk through all files and directories recursively
-			for entry in WalkDir::new(outpath)
-				.into_iter()
-				.filter_map(|e| e.ok()) // Skip errors
-			{
-				let path = entry.path();
-				if path.is_file() {
-					let mut new_parent_files = parent_files.clone();
-					new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-					// new_parent_files passes ownership instead of reference, because we no longer need it after passing into this function
-					extract_archive(path, depth+1, new_parent_files, list_of_files_in_archive)?;
+					// Walk through all files and directories recursively
+					for entry in WalkDir::new(outpath)
+						.into_iter()
+						.filter_map(|e| e.ok()) // Skip errors
+					{
+						let path = entry.path();
+						if path.is_file() {
+							let mut new_parent_files = parent_files.clone();
+							new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
+							// new_parent_files passes ownership instead of reference, because we no longer need it after passing into this function
+							extract_archive(path, depth+1, new_parent_files, list_of_files_in_archive)?;
+						}
+					}
+				}
+				Err(err) => {
+					match err {
+						sevenz_rust::Error::MaybeBadPassword(msg) => {
+							warn!("sevenz_rust::Error::MaybeBadPassword: {}", msg);
+						}
+						_ => return Err(Box::new(err))
+					}
 				}
 			}
 		}
