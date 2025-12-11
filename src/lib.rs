@@ -734,23 +734,38 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 									}
 								}
 								for iimg in 0..num_images {
-									let image_info:Vec<&str> = image_output_lines[iimg+2].split_ascii_whitespace().collect();
+									// let image_info:Vec<&str> = image_output_lines[iimg+2].split_ascii_whitespace().collect();
 									//type image -> .ppm, type stencil -> .pbm
-									let image_type = image_info[2];
-									let image_ext;
-									if image_type == "stencil" {
-										image_ext = "pbm";
-									} else if image_type == "image" {
-										image_ext = "ppm";
-									} else if image_type == "smask" {
-										image_ext = "ppm";
+									// let image_type = image_info[2];
+									// let image_color = image_info[5];
+									// let image_ext;
+									// if image_color == "index" {
+									// 	image_ext = "pbm";
+									// } else if image_color == "gray" {
+									// 	image_ext = "pbm";
+									// } else if image_type == "stencil" {
+									// 	image_ext = "pbm";
+									// } else if image_type == "image" {
+									// 	image_ext = "ppm";
+									// } else if image_type == "smask" {
+									// 	image_ext = "ppm";
+									// } else {
+									// 	return Err(format!("Unknown PDF embedded image type {}", image_type).into());
+									// }
+									// println!("image_info\n{:?}", image_info);
+									let image_filename_base = image_filename_prefix.clone();
+									let image_filename_ppm = image_filename_base.clone() + &format!("-{:03}.{}", iimg, "ppm");
+									let image_filename_pbm = image_filename_base + &format!("-{:03}.{}", iimg, "pbm");
+									let outpath_ppm = PathBuf::from(image_filename_ppm);
+									let outpath_pbm = PathBuf::from(image_filename_pbm);
+									let outpath;
+									if outpath_ppm.exists() {
+										outpath = outpath_ppm;
+									} else if outpath_pbm.exists() {
+										outpath = outpath_pbm;
 									} else {
-										return Err(format!("Unknown PDF embedded image type {}", image_type).into());
+										return Err(format!("Unknown PDF embedded image file extension").into());
 									}
-									//println!("image_info\n{:?}", image_info);
-									let mut image_filename = image_filename_prefix.clone();
-									image_filename.push_str(&format!("-{:03}.{}", iimg, image_ext));
-									let outpath = PathBuf::from(image_filename);
 									let mut new_parent_files = parent_files.clone();
 									new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
 									extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
