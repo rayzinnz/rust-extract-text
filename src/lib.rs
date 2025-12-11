@@ -714,72 +714,73 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 						Ok(output) => {
 							if !output.stderr.is_empty() {
 								println!("{:#?}", command);
-								panic!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
-							}
-							let output = String::from_utf8_lossy(&output.stdout);
-							//println!("stdout: {}", output);
-							let image_output_lines:Vec<&str> = output.trim_end().lines().collect();
-							//println!("*** image_output_lines\n{:?}", image_output_lines);
-							let num_images = image_output_lines.len() - 2;
-							// println!(">>> num_images {}", num_images);
-							if num_images > 0 {
-								//export
-								let image_filename_prefix = pdfimages_outpath.to_str().expect("Path contains invalid UTF-8").to_string();
-								let mut command = Command::new("pdfimages");
-								command
-									.arg("-f").arg(format!("{}", page_number))
-									.arg("-l").arg(format!("{}", page_number))
-									.arg(format!("{}", filepath.to_str().expect("Path contains invalid UTF-8").to_string()))
-									.arg(format!("{}", image_filename_prefix));
-								debug!("{:#?}", command);
-								match command.output() {
-									Ok(output) => {
-										if !output.stderr.is_empty() {
+								warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
+							} else {
+								let output = String::from_utf8_lossy(&output.stdout);
+								//println!("stdout: {}", output);
+								let image_output_lines:Vec<&str> = output.trim_end().lines().collect();
+								//println!("*** image_output_lines\n{:?}", image_output_lines);
+								let num_images = image_output_lines.len() - 2;
+								// println!(">>> num_images {}", num_images);
+								if num_images > 0 {
+									//export
+									let image_filename_prefix = pdfimages_outpath.to_str().expect("Path contains invalid UTF-8").to_string();
+									let mut command = Command::new("pdfimages");
+									command
+										.arg("-f").arg(format!("{}", page_number))
+										.arg("-l").arg(format!("{}", page_number))
+										.arg(format!("{}", filepath.to_str().expect("Path contains invalid UTF-8").to_string()))
+										.arg(format!("{}", image_filename_prefix));
+									debug!("{:#?}", command);
+									match command.output() {
+										Ok(output) => {
+											if !output.stderr.is_empty() {
+												println!("{:#?}", command);
+												panic!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
+											}
+										}
+										Err(e) => {
 											println!("{:#?}", command);
-											panic!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
+											panic!("Failed to execute {:?}: {}", command.get_program(), e);
 										}
 									}
-									Err(e) => {
-										println!("{:#?}", command);
-										panic!("Failed to execute {:?}: {}", command.get_program(), e);
+									for iimg in 0..num_images {
+										// let image_info:Vec<&str> = image_output_lines[iimg+2].split_ascii_whitespace().collect();
+										//type image -> .ppm, type stencil -> .pbm
+										// let image_type = image_info[2];
+										// let image_color = image_info[5];
+										// let image_ext;
+										// if image_color == "index" {
+										// 	image_ext = "pbm";
+										// } else if image_color == "gray" {
+										// 	image_ext = "pbm";
+										// } else if image_type == "stencil" {
+										// 	image_ext = "pbm";
+										// } else if image_type == "image" {
+										// 	image_ext = "ppm";
+										// } else if image_type == "smask" {
+										// 	image_ext = "ppm";
+										// } else {
+										// 	return Err(format!("Unknown PDF embedded image type {}", image_type).into());
+										// }
+										// println!("image_info\n{:?}", image_info);
+										let image_filename_base = image_filename_prefix.clone();
+										let image_filename_ppm = image_filename_base.clone() + &format!("-{:03}.{}", iimg, "ppm");
+										let image_filename_pbm = image_filename_base + &format!("-{:03}.{}", iimg, "pbm");
+										let outpath_ppm = PathBuf::from(image_filename_ppm);
+										let outpath_pbm = PathBuf::from(image_filename_pbm);
+										let outpath;
+										if outpath_ppm.exists() {
+											outpath = outpath_ppm;
+										} else if outpath_pbm.exists() {
+											outpath = outpath_pbm;
+										} else {
+											return Err(format!("Unknown PDF embedded image file extension").into());
+										}
+										let mut new_parent_files = parent_files.clone();
+										new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
+										extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
 									}
-								}
-								for iimg in 0..num_images {
-									// let image_info:Vec<&str> = image_output_lines[iimg+2].split_ascii_whitespace().collect();
-									//type image -> .ppm, type stencil -> .pbm
-									// let image_type = image_info[2];
-									// let image_color = image_info[5];
-									// let image_ext;
-									// if image_color == "index" {
-									// 	image_ext = "pbm";
-									// } else if image_color == "gray" {
-									// 	image_ext = "pbm";
-									// } else if image_type == "stencil" {
-									// 	image_ext = "pbm";
-									// } else if image_type == "image" {
-									// 	image_ext = "ppm";
-									// } else if image_type == "smask" {
-									// 	image_ext = "ppm";
-									// } else {
-									// 	return Err(format!("Unknown PDF embedded image type {}", image_type).into());
-									// }
-									// println!("image_info\n{:?}", image_info);
-									let image_filename_base = image_filename_prefix.clone();
-									let image_filename_ppm = image_filename_base.clone() + &format!("-{:03}.{}", iimg, "ppm");
-									let image_filename_pbm = image_filename_base + &format!("-{:03}.{}", iimg, "pbm");
-									let outpath_ppm = PathBuf::from(image_filename_ppm);
-									let outpath_pbm = PathBuf::from(image_filename_pbm);
-									let outpath;
-									if outpath_ppm.exists() {
-										outpath = outpath_ppm;
-									} else if outpath_pbm.exists() {
-										outpath = outpath_pbm;
-									} else {
-										return Err(format!("Unknown PDF embedded image file extension").into());
-									}
-									let mut new_parent_files = parent_files.clone();
-									new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-									extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
 								}
 							}
 						}
