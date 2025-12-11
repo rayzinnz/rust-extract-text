@@ -705,9 +705,11 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 								println!("{:#?}", command);
 								panic!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
 							}
-							//println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
 							let output = String::from_utf8_lossy(&output.stdout);
-							let num_images = output.lines().count() - 2;
+							//println!("stdout: {}", output);
+							let image_output_lines:Vec<&str> = output.trim_end().lines().collect();
+							//println!("*** image_output_lines\n{:?}", image_output_lines);
+							let num_images = image_output_lines.len() - 2;
 							// println!(">>> num_images {}", num_images);
 							if num_images > 0 {
 								//export
@@ -732,8 +734,20 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 									}
 								}
 								for iimg in 0..num_images {
+									let image_info:Vec<&str> = image_output_lines[iimg+2].split_ascii_whitespace().collect();
+									//type image -> .ppm, type stencil -> .pbm
+									let image_type = image_info[2];
+									let image_ext;
+									if image_type == "stencil" {
+										image_ext = "pbm";
+									} else if image_type == "image" {
+										image_ext = "ppm";
+									} else {
+										return Err(format!("Unknown PDF embedded image type {}", image_type).into());
+									}
+									//println!("image_info\n{:?}", image_info);
 									let mut image_filename = image_filename_prefix.clone();
-									image_filename.push_str(&format!("-{:03}.ppm", iimg));
+									image_filename.push_str(&format!("-{:03}.{}", iimg, image_ext));
 									let outpath = PathBuf::from(image_filename);
 									let mut new_parent_files = parent_files.clone();
 									new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
@@ -1133,6 +1147,7 @@ pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListIt
 				}
 			}
 			Err(e) => {
+				keep_going.store(false, Ordering::Relaxed);
 				panic!("Error getting metadata for file: {:?} error: {:?}", sub_file_item.filepath, e);
 			}
 		}
