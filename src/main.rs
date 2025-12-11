@@ -66,10 +66,12 @@ fn main()  -> Result<(), Box<dyn Error>> {
 	// let subpath = Path::new("docs/pass_protected.ods");
 	// let subpath = Path::new("docs/pass_protected.xlsx");
 	// let subpath = Path::new("docs/pass_protected.xlsb");
+	// let subpath = Path::new("docs/231007 - P-2 use.xls");
+	let subpath = Path::new("docs/IC3_231019_gradient.xls");
 	// let subpath = Path::new("emails/msg_in_msg_in_msg.msg");
 	// let subpath = Path::new("emails/msg_in_msg.msg");
 	// let subpath = Path::new("emails/test_email_1.msg");
-	let subpath = Path::new("archives/EICAR_test_virus.TXT.zip");
+	// let subpath = Path::new("archives/EICAR_test_virus.TXT.zip");
 
 	// let path = Path::new(r"C:\Users\hrag\Sync\desktop.ini");
 	let path = Path::new("./tests/resources/files_to_scan").join(subpath);
