@@ -742,6 +742,8 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 										image_ext = "pbm";
 									} else if image_type == "image" {
 										image_ext = "ppm";
+									} else if image_type == "smask" {
+										image_ext = "ppm";
 									} else {
 										return Err(format!("Unknown PDF embedded image type {}", image_type).into());
 									}
