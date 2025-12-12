@@ -80,13 +80,25 @@ fn get_effective_file_extension(filepath: &Path) -> String {
 		"doc","docm","docx",
 		"eml",
 		"jpeg","jpg",
-		"msg",
 		"ods","odt",
 		"pdf","png",
 		"txt",
 		"xlam","xls","xlsb","xlsm","xlsx","xlsx",
 		].contains(&file_extension.as_str()) {
 		return file_extension;
+	}
+
+	//msg match both extension and cfb DOCFILE magic bytes.
+	if file_extension == "msg" {
+		if let Ok(mut file) = File::open(filepath) {
+			let mut header = [0u8; 8];
+			if file.read_exact(&mut header).is_ok() {
+				if header == [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1] {
+					return "msg".to_string();
+				}
+			}
+		}
+		return "bin".to_string();
 	}
 	
 	//magic bytes

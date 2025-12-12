@@ -61,6 +61,8 @@ fn main()  -> Result<(), Box<dyn Error>> {
 	// let subpath = Path::new("empty_file");
 	// let subpath = Path::new("archives/EICAR_test_virus.TXT.zip");
 	// let subpath = Path::new("archives/ArtemisTestVirusWithSignedExes.7z");
+	let subpath = Path::new("archives/SSMS18.7z");
+	// let subpath = Path::new("binary/fpext.msg");
 	// let subpath = Path::new("txt/text_utf8.txt");
 	// let subpath = Path::new("txt/text_utf16le.txt");
 	// let subpath = Path::new("docs/pass_protected_with_readable_text.xls");
@@ -71,7 +73,7 @@ fn main()  -> Result<(), Box<dyn Error>> {
 	// let subpath = Path::new("docs/IC3_231019_gradient.xls");
 	// let subpath = Path::new("docs/CPROD - 13NZAK0060930 - 20130927.xlsx");
 	// let subpath = Path::new("docs/5407953830.pdf");
-	let subpath = Path::new("docs/Geoforce - pointage - flux vers Chronos v2.pdf");
+	// let subpath = Path::new("docs/Geoforce - pointage - flux vers Chronos v2.pdf");
 	// let subpath = Path::new("docs/Developmental-History-Form.pdf");
 	// let subpath = Path::new("emails/msg_in_msg_in_msg.msg");
 	// let subpath = Path::new("emails/msg_in_msg.msg");
