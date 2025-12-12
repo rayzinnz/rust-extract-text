@@ -602,7 +602,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 					// println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
 					if !output.stderr.is_empty() {
 						debug!("{:#?}", command);
-						info!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
+						warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
 					} else {
 						let output = String::from_utf8_lossy(&output.stdout);
 						let output = output.lines();
@@ -645,7 +645,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 					Ok(output) => {
 						if !output.stderr.is_empty() {
 							debug!("{:#?}", command);
-							info!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
+							warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
 						}
 						let mut new_parent_files = parent_files.clone();
 						new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
@@ -675,19 +675,20 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 					match command.output() {
 						Ok(output) => {
 							if !output.stderr.is_empty() {
-								println!("{:#?}", command);
-								panic!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
-							}
-							//println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-							let output = String::from_utf8_lossy(&output.stdout);
-							let output = output.lines();
-							for line in output {
-								if let Some((image_filename, _)) = line.split_once(": ") {
-									// println!(">>> {}", image_filename);
-									let outpath = PathBuf::from(image_filename);
-									let mut new_parent_files = parent_files.clone();
-									new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-									extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+								debug!("{:#?}", command);
+								warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
+							} else {
+								//println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+								let output = String::from_utf8_lossy(&output.stdout);
+								let output = output.lines();
+								for line in output {
+									if let Some((image_filename, _)) = line.split_once(": ") {
+										// println!(">>> {}", image_filename);
+										let outpath = PathBuf::from(image_filename);
+										let mut new_parent_files = parent_files.clone();
+										new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
+										extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+									}
 								}
 							}
 						}
