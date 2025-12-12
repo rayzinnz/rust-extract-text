@@ -602,7 +602,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 					// println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
 					if !output.stderr.is_empty() {
 						debug!("{:#?}", command);
-						info!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
+						warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
 					} else {
 						let output = String::from_utf8_lossy(&output.stdout);
 						let output = output.lines();
@@ -645,7 +645,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 					Ok(output) => {
 						if !output.stderr.is_empty() {
 							debug!("{:#?}", command);
-							info!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
+							warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
 						}
 						let mut new_parent_files = parent_files.clone();
 						new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
