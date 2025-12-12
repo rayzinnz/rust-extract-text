@@ -713,7 +713,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 					match command.output() {
 						Ok(output) => {
 							if !output.stderr.is_empty() {
-								println!("{:#?}", command);
+								debug!("{:#?}", command);
 								warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
 							} else {
 								let output = String::from_utf8_lossy(&output.stdout);
@@ -735,8 +735,8 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 									match command.output() {
 										Ok(output) => {
 											if !output.stderr.is_empty() {
-												println!("{:#?}", command);
-												panic!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
+												debug!("{:#?}", command);
+												warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
 											}
 										}
 										Err(e) => {
