@@ -625,10 +625,6 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 					panic!("Failed to execute {:?}: {}", command.get_program(), e);
 				}
 			}
-			if page_count == 0 {
-				println!("{:#?}", command);
-				panic!("Page count is 0");
-			}
 			trace!("PDF page count {}", page_count);
 			for page_number in 1..=page_count {
 				// debug!("page number: {}", page_number)
