@@ -71,7 +71,7 @@ fn main()  -> Result<(), Box<dyn Error>> {
 	// let subpath = Path::new("docs/IC3_231019_gradient.xls");
 	// let subpath = Path::new("docs/CPROD - 13NZAK0060930 - 20130927.xlsx");
 	// let subpath = Path::new("docs/5407953830.pdf");
-	let subpath = Path::new("docs/ImageFusion_Module_User_Guide.pdf");
+	let subpath = Path::new("docs/Geoforce - OGI - Documentation utilisateur.pdf");
 	// let subpath = Path::new("docs/Developmental-History-Form.pdf");
 	// let subpath = Path::new("emails/msg_in_msg_in_msg.msg");
 	// let subpath = Path::new("emails/msg_in_msg.msg");
