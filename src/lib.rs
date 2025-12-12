@@ -766,20 +766,23 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 										// println!("image_info\n{:?}", image_info);
 										let image_filename_base = image_filename_prefix.clone();
 										let image_filename_ppm = image_filename_base.clone() + &format!("-{:03}.{}", iimg, "ppm");
-										let image_filename_pbm = image_filename_base + &format!("-{:03}.{}", iimg, "pbm");
+										// let image_filename_pbm = image_filename_base + &format!("-{:03}.{}", iimg, "pbm");
 										let outpath_ppm = PathBuf::from(image_filename_ppm);
-										let outpath_pbm = PathBuf::from(image_filename_pbm);
+										// let outpath_pbm = PathBuf::from(&image_filename_pbm);
 										let outpath;
 										if outpath_ppm.exists() {
 											outpath = outpath_ppm;
-										} else if outpath_pbm.exists() {
-											outpath = outpath_pbm;
+										// } else if outpath_pbm.exists() {
+										// 	outpath = outpath_pbm;
+										// } else {
+										// 	return Err(format!("Unknown PDF embedded image file extension: {}", image_filename_pbm).into());
+										// }
+											let mut new_parent_files = parent_files.clone();
+											new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
+											extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
 										} else {
-											return Err(format!("Unknown PDF embedded image file extension").into());
+											debug!("No PDF embedded image found: {:?}", outpath_ppm);
 										}
-										let mut new_parent_files = parent_files.clone();
-										new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-										extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
 									}
 								}
 							}
