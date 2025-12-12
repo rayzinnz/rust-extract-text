@@ -602,19 +602,20 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 					// println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
 					if !output.stderr.is_empty() {
 						debug!("{:#?}", command);
-						panic!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
-					}
-					let output = String::from_utf8_lossy(&output.stdout);
-					let output = output.lines();
-					for line in output {
-						if line.starts_with("Pages:") {
-							let pc = line.split_whitespace();
-							if let Some(pc) = pc.last() {
-								let pc: u32 = pc.parse()?;
-								page_count = pc;
-							} else {
-								println!("{:#?}", command);
-								panic!("No page count found.");
+						info!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
+					} else {
+						let output = String::from_utf8_lossy(&output.stdout);
+						let output = output.lines();
+						for line in output {
+							if line.starts_with("Pages:") {
+								let pc = line.split_whitespace();
+								if let Some(pc) = pc.last() {
+									let pc: u32 = pc.parse()?;
+									page_count = pc;
+								} else {
+									println!("{:#?}", command);
+									panic!("No page count found.");
+								}
 							}
 						}
 					}
@@ -647,8 +648,8 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 				match command.output() {
 					Ok(output) => {
 						if !output.stderr.is_empty() {
-							println!("{:#?}", command);
-							panic!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
+							debug!("{:#?}", command);
+							info!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
 						}
 						let mut new_parent_files = parent_files.clone();
 						new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
