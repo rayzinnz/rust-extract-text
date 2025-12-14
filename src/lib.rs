@@ -1201,7 +1201,7 @@ pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListIt
 			}
 			Err(e) => {
 				keep_going.store(false, Ordering::Relaxed);
-				panic!("Error getting metadata for file: {:?} error: {:?}", sub_file_item.filepath, e);
+				return Err(format!("Error getting metadata for file: {:?} error: {:?}", sub_file_item.filepath, e).into());
 			}
 		}
 
