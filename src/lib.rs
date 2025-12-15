@@ -930,14 +930,16 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							}
 
 							// Extract the file
-							let mut outfile = File::create(&outpath)?;
-							io::copy(&mut zipfile, &mut outfile)?;
-							debug!("Extracted: {:?}", outpath);
-							let mut new_parent_files = parent_files.clone();
-							new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-							// new_parent_files passes ownership instead of reference, because we no longer need it after passing into this function
-							extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
-							//filepath.file_name().unwrap_or_default().to_string_lossy().to_string()
+							if !outpath.exists() { // if file already exists, as it duplicate filenames can appear in some archives (e.g. if archive created in linux with different case, and Windows does not care about case), just skip it.
+								let mut outfile = File::create(&outpath)?;
+								io::copy(&mut zipfile, &mut outfile)?;
+								debug!("Extracted: {:?}", outpath);
+								let mut new_parent_files = parent_files.clone();
+								new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
+								// new_parent_files passes ownership instead of reference, because we no longer need it after passing into this function
+								extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+								//filepath.file_name().unwrap_or_default().to_string_lossy().to_string()
+							}
 						}
 					}
 					Err(err) => {
@@ -1137,22 +1139,24 @@ pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListIt
 					};
 					file_list_items.push(file_list_item);
 					continue;
-				} else if file_len > MAX_FILE_SIZE {
+				}
+				debug!("{:?}", sub_file_item);
+				debug!("\n  file: {:?}\n    depth:{}, {:?}\n      subfile: {:?}", filepath, sub_file_item.depth, sub_file_item.parent_files, sub_file_item.filepath.file_name().unwrap());
+
+				let file_crc: i64 = checksum_file(Crc64Nvme, sub_file_item.filepath.to_str().unwrap(), None).unwrap() as i64;
+
+				if file_len > MAX_FILE_SIZE {
 					info!("Skiping subfile {} due to large size {}.", file_name, file_len);
 					let file_list_item: FileListItem = FileListItem{
 						filename: file_name,
 						parent_files: sub_file_item.parent_files,
-						crc: 0,
+						crc: file_crc,
 						size: file_len as i64,
 						text_contents: Some(String::new()),
 					};
 					file_list_items.push(file_list_item);
 					continue;
 				}
-				debug!("{:?}", sub_file_item);
-				debug!("\n  file: {:?}\n    depth:{}, {:?}\n      subfile: {:?}", filepath, sub_file_item.depth, sub_file_item.parent_files, sub_file_item.filepath.file_name().unwrap());
-
-				let file_crc: i64 = checksum_file(Crc64Nvme, sub_file_item.filepath.to_str().unwrap(), None).unwrap() as i64;
 
 				//if this is in a prescanned item, then check the filecrc
 				let mut skip_file = false;
