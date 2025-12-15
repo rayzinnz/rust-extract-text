@@ -930,14 +930,16 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							}
 
 							// Extract the file
-							let mut outfile = File::create(&outpath)?;
-							io::copy(&mut zipfile, &mut outfile)?;
-							debug!("Extracted: {:?}", outpath);
-							let mut new_parent_files = parent_files.clone();
-							new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-							// new_parent_files passes ownership instead of reference, because we no longer need it after passing into this function
-							extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
-							//filepath.file_name().unwrap_or_default().to_string_lossy().to_string()
+							if !outpath.exists() { // if file already exists, as it duplicate filenames can appear in some archives (e.g. if archive created in linux with different case, and Windows does not care about case), just skip it.
+								let mut outfile = File::create(&outpath)?;
+								io::copy(&mut zipfile, &mut outfile)?;
+								debug!("Extracted: {:?}", outpath);
+								let mut new_parent_files = parent_files.clone();
+								new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
+								// new_parent_files passes ownership instead of reference, because we no longer need it after passing into this function
+								extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+								//filepath.file_name().unwrap_or_default().to_string_lossy().to_string()
+							}
 						}
 					}
 					Err(err) => {
