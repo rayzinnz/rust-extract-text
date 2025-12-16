@@ -124,7 +124,8 @@ fn get_effective_file_extension(filepath: &Path) -> String {
 			}
 		}
 		Err(e) => {
-			panic!("Error getting file metadata {:?}. {:?}", filepath, e);
+			error!("Error getting file metadata {:?}. {:?}", filepath, e);
+			return file_extension;
 		}
 	}
 
@@ -215,7 +216,7 @@ fn detect_encoding(filepath: &Path, assume_utf8: bool) -> &'static Encoding {
 // 		.collect()
 // }
 
-fn msg_get_contents(cfbf: &mut CompoundFile<File>, path: PathBuf) -> (String, String, Vec<PathBuf>) {
+fn msg_get_contents(cfbf: &mut CompoundFile<File>, path: PathBuf) -> Result<(String, String, Vec<PathBuf>), Box<dyn Error>> {
 	let mut subject = String::new();
 	let mut body = String::new();
 	let mut sub_paths: Vec<PathBuf> = Vec::new();
@@ -229,7 +230,7 @@ fn msg_get_contents(cfbf: &mut CompoundFile<File>, path: PathBuf) -> (String, St
 			subject = data.0.to_string();
 		}
 	} else {
-		panic!("Subject stream not found in {:?}", path)
+		return Err(format!("Subject stream not found in {:?}", path).into())
 	}
 
 	//body 0x1000 Body, 0x001F UTF_16LE
@@ -241,7 +242,7 @@ fn msg_get_contents(cfbf: &mut CompoundFile<File>, path: PathBuf) -> (String, St
 			body = data.0.to_string();
 		}
 	} else {
-		panic!("Body stream not found in {:?}", path)
+		return Err(format!("Body stream not found in {:?}", path).into())
 	}
 
 	//attachments
@@ -257,7 +258,7 @@ fn msg_get_contents(cfbf: &mut CompoundFile<File>, path: PathBuf) -> (String, St
 		}
 	}
 
-	return (subject, body, sub_paths)
+	return Ok((subject, body, sub_paths))
 }
 
 /// Produces a list of files held within files (if any), recursive, and extracts individual files within archives to a temp folder.
@@ -422,7 +423,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 
 			let mut cfbf = cfb::open(filepath)?;
 
-			let (subject, body, sub_paths) = msg_get_contents(&mut cfbf, PathBuf::from("/"));
+			let (subject, body, sub_paths) = msg_get_contents(&mut cfbf, PathBuf::from("/"))?;
 			// debug!("{:?}", subject);
 			// debug!("{:?}", body);
 			// debug!("{:?}", sub_paths);
@@ -464,7 +465,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 								let data = UTF_16LE.decode(&data);
 								filename = data.0.to_string();
 							} else {
-								panic!("Body stream not found in {:?}", filepath)
+								return Err(format!("Body stream not found in {:?}", filepath).into())
 							}
 							//download binary attachment
 							let mut stream = cfbf.open_stream(sub_path.join("__substg1.0_37010102"))?;
@@ -497,7 +498,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 								let data = UTF_16LE.decode(&data);
 								displayname = data.0.to_string();
 							} else {
-								panic!("Body stream not found in {:?}", filepath)
+								return Err(format!("Body stream not found in {:?}", filepath).into())
 							}
 							displayname.retain(|c| !FILENAME_ILLEGAL_CHARS.contains(&c));
 							//empty file placeholder as embedded msg
@@ -523,7 +524,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							}
 							let filesubpath2 = filesubpath.clone().join(&msg_placeholder_filename);
 							//recurse into path
-							let (subject, body, sub_paths2) = msg_get_contents(&mut cfbf, sub_path.join("__substg1.0_3701000D"));
+							let (subject, body, sub_paths2) = msg_get_contents(&mut cfbf, sub_path.join("__substg1.0_3701000D"))?;
 							// println!("{:?}", sub_path.components().last().unwrap());
 							// println!("{:?}", subject);
 							// println!("{:?}", body);
@@ -547,7 +548,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							}
 						}
 						else {
-							panic!("Unknown attachment type. Path: {:?}, file: {:?}", sub_path, filepath);
+							return Err(format!("Unknown attachment type. Path: {:?}, file: {:?}", sub_path, filepath).into())
 						}
 					}
 				}
@@ -606,7 +607,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 			// get page count
 			let mut page_count: u32 = 0;
 			let mut command = Command::new("pdfinfo");
-			command.arg(format!("{}", filepath.to_str().expect("Path contains invalid UTF-8").to_string()));
+			command.arg(format!("{}", filepath.to_string_lossy().to_string()));
 			debug!("{:#?}", command);
 			match command.output() {
 				Ok(output) => {
@@ -626,7 +627,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 									page_count = pc;
 								} else {
 									println!("{:#?}", command);
-									panic!("No page count found.");
+									return Err(format!("No page count found in PDF {}", filepath.to_string_lossy()).into())
 								}
 							}
 						}
@@ -634,7 +635,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 				}
 				Err(e) => {
 					println!("{:#?}", command);
-					panic!("Failed to execute {:?}: {}", command.get_program(), e);
+					return Err(format!("Failed to execute {:?}: {}", command.get_program(), e).into())
 				}
 			}
 			trace!("PDF page count {}", page_count);
@@ -642,6 +643,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 				// debug!("page number: {}", page_number)
 
 				//page text
+				let mut is_text_extract_denied = false;
 				// pdftotext -f 1 -l 1 /home/ray/MEGA/Rays/Programming/python/file/test_text_extract/docs/sample2.pdf -
 				// pdftotext -f 1 -l 1 -enc UTF-8 "C:\Users\hrag\Sync\Programming\python\file\test_text_extract\docs\fiche d'evaluation du stagiaire - Loïc Vital.pdf" C:\Users\hrag\AppData\Local\Temp\extract_text_from_file\pdftext.txt
 				// https://www.xpdfreader.com/pdftotext-man.html
@@ -650,159 +652,209 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 				command
 					.arg("-f").arg(format!("{}", page_number))
 					.arg("-l").arg(format!("{}", page_number))
-					.arg(format!("{}", filepath.to_str().expect("Path contains invalid UTF-8").to_string()))
-					.arg(format!("{}", outpath.to_str().expect("Path contains invalid UTF-8").to_string()));
+					.arg(format!("{}", filepath.to_string_lossy().to_string()))
+					.arg(format!("{}", outpath.to_string_lossy().to_string()));
 				debug!("{:#?}", command);
 				match command.output() {
 					Ok(output) => {
 						if !output.stderr.is_empty() {
-							debug!("{:#?}", command);
-							warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
+							let output_text = String::from_utf8_lossy(&output.stderr);
+							if output_text.contains("Copying of text from this document is not allowed") {
+								is_text_extract_denied = true;
+							} else {
+								debug!("{:#?}", command);
+								warn!("Error returned from {:?}: {}", command.get_program(), output_text);
+							}
 						}
-						let mut new_parent_files = parent_files.clone();
-						new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-						extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+						if !is_text_extract_denied {
+							let mut new_parent_files = parent_files.clone();
+							new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
+							extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+						}
 					}
 					Err(e) => {
 						println!("{:#?}", command);
-						panic!("Failed to execute {:?}: {}", command.get_program(), e);
+						return Err(format!("Failed to execute {:?}: {}", command.get_program(), e).into())
 					}
 				}
 
 				//page images
-				// pdfimages -list /home/ray/MEGA/Rays/Programming/python/file/test_text_extract/docs/sample2.pdf /tmp/extract_text_from_file/870eabfb3dc44ae185b84f6056f73397/image
-				// pdfimages -list "C:\Users\hrag\Sync\Programming\python\file\test_text_extract\docs\fiche d'evaluation du stagiaire - Loïc Vital.pdf" C:\Users\hrag\AppData\Local\Temp\extract_text_from_file\image
-				// https://www.xpdfreader.com/pdfimages-man.html
-				let pdfimages_outpath = tempfiles_location().join(&achive_uuid_subdir).join(format!("page {} image", page_number));
-				#[cfg(target_os = "windows")]
-				{
-					let mut command = Command::new("pdfimages");
-					command
-						.arg("-f").arg(format!("{}", page_number))
-						.arg("-l").arg(format!("{}", page_number))
-						.arg("-list")
-						.arg(format!("{}", filepath.to_str().expect("Path contains invalid UTF-8").to_string()))
-						.arg(format!("{}", pdfimages_outpath.to_str().expect("Path contains invalid UTF-8").to_string()));
-					debug!("{:#?}", command);
-					match command.output() {
-						Ok(output) => {
-							if !output.stderr.is_empty() {
-								debug!("{:#?}", command);
-								warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
-							} else {
-								//println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-								let output = String::from_utf8_lossy(&output.stdout);
-								let output = output.lines();
-								for line in output {
-									if let Some((image_filename, _)) = line.split_once(": ") {
-										// println!(">>> {}", image_filename);
-										let outpath = PathBuf::from(image_filename);
-										let mut new_parent_files = parent_files.clone();
-										new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-										extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+				if is_text_extract_denied {
+					//OCR on the entire page
+					// pdftopng -f 1 -l 1 -gray "C:\Users\hrag\Sync\Programming\rust\rust-extract-text\tests\resources\files_to_scan\docs\ILEADER-V4 3-User Manual-Administration Module-1.0.0.pdf" C:\Users\hrag\AppData\Local\Temp\extract_text_from_file\page
+					#[cfg(target_os = "windows")]
+					{
+						//appends -000001.png
+						let pdfimages_outpath = tempfiles_location().join(&achive_uuid_subdir).join("page");
+						let outpath = tempfiles_location().join(&achive_uuid_subdir).join(format!("page-{:06}.png", page_number));
+						let mut command = Command::new("pdftopng");
+						command
+							.arg("-f").arg(format!("{}", page_number))
+							.arg("-l").arg(format!("{}", page_number))
+							.arg("-gray")
+							.arg(format!("{}", filepath.to_string_lossy().to_string()))
+							.arg(format!("{}", pdfimages_outpath.to_string_lossy().to_string()));
+						debug!("{:#?}", command);
+						match command.output() {
+							Ok(output) => {
+								if !output.stderr.is_empty() {
+									let output_text = String::from_utf8_lossy(&output.stderr);
+									if output_text.contains("No display font") {
+										//don't worry about this error
+									} else {
+										debug!("{:#?}", command);
+										warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
 									}
 								}
+								let mut new_parent_files = parent_files.clone();
+								new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
+								extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+							}
+							Err(e) => {
+								println!("{:#?}", command);
+								return Err(format!("Failed to execute {:?}: {}", command.get_program(), e).into())
 							}
 						}
-						Err(e) => {
-							println!("{:#?}", command);
-							panic!("Failed to execute {:?}: {}", command.get_program(), e);
-						}
 					}
-				}
-				#[cfg(target_os = "linux")]
-				{
-					//linux, first get list of images in page, then extract
-					let mut command = Command::new("pdfimages");
-					command
-						.arg("-f").arg(format!("{}", page_number))
-						.arg("-l").arg(format!("{}", page_number))
-						.arg("-list")
-						.arg(format!("{}", filepath.to_str().expect("Path contains invalid UTF-8").to_string()));
-					debug!("{:#?}", command);
-					match command.output() {
-						Ok(output) => {
-							if !output.stderr.is_empty() {
-								debug!("{:#?}", command);
-								warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
-							} else {
-								let output = String::from_utf8_lossy(&output.stdout);
-								//println!("stdout: {}", output);
-								let image_output_lines:Vec<&str> = output.trim_end().lines().collect();
-								//println!("*** image_output_lines\n{:?}", image_output_lines);
-								let num_images = image_output_lines.len() - 2;
-								// println!(">>> num_images {}", num_images);
-								if num_images > 0 {
-									//export
-									let image_filename_prefix = pdfimages_outpath.to_str().expect("Path contains invalid UTF-8").to_string();
-									let mut command = Command::new("pdfimages");
-									command
-										.arg("-f").arg(format!("{}", page_number))
-										.arg("-l").arg(format!("{}", page_number))
-										.arg(format!("{}", filepath.to_str().expect("Path contains invalid UTF-8").to_string()))
-										.arg(format!("{}", image_filename_prefix));
+					#[cfg(target_os = "linux")]
+					{
+						panic!("TODO, page to png in linux");
+					}
+				} else {
+					// pdfimages -list /home/ray/MEGA/Rays/Programming/python/file/test_text_extract/docs/sample2.pdf /tmp/extract_text_from_file/870eabfb3dc44ae185b84f6056f73397/image
+					// pdfimages -list "C:\Users\hrag\Sync\Programming\python\file\test_text_extract\docs\fiche d'evaluation du stagiaire - Loïc Vital.pdf" C:\Users\hrag\AppData\Local\Temp\extract_text_from_file\image
+					// https://www.xpdfreader.com/pdfimages-man.html
+					let pdfimages_outpath = tempfiles_location().join(&achive_uuid_subdir).join(format!("page {} image", page_number));
+					#[cfg(target_os = "windows")]
+					{
+						let mut command = Command::new("pdfimages");
+						command
+							.arg("-f").arg(format!("{}", page_number))
+							.arg("-l").arg(format!("{}", page_number))
+							.arg("-list")
+							.arg(format!("{}", filepath.to_string_lossy().to_string()))
+							.arg(format!("{}", pdfimages_outpath.to_string_lossy().to_string()));
+						debug!("{:#?}", command);
+						match command.output() {
+							Ok(output) => {
+								if !output.stderr.is_empty() {
 									debug!("{:#?}", command);
-									match command.output() {
-										Ok(output) => {
-											if !output.stderr.is_empty() {
-												debug!("{:#?}", command);
-												warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
-											}
-										}
-										Err(e) => {
-											println!("{:#?}", command);
-											panic!("Failed to execute {:?}: {}", command.get_program(), e);
-										}
-									}
-									for iimg in 0..num_images {
-										// let image_info:Vec<&str> = image_output_lines[iimg+2].split_ascii_whitespace().collect();
-										//type image -> .ppm, type stencil -> .pbm
-										// let image_type = image_info[2];
-										// let image_color = image_info[5];
-										// let image_ext;
-										// if image_color == "index" {
-										// 	image_ext = "pbm";
-										// } else if image_color == "gray" {
-										// 	image_ext = "pbm";
-										// } else if image_type == "stencil" {
-										// 	image_ext = "pbm";
-										// } else if image_type == "image" {
-										// 	image_ext = "ppm";
-										// } else if image_type == "smask" {
-										// 	image_ext = "ppm";
-										// } else {
-										// 	return Err(format!("Unknown PDF embedded image type {}", image_type).into());
-										// }
-										// println!("image_info\n{:?}", image_info);
-										let image_filename_base = image_filename_prefix.clone();
-										let image_filename_ppm = image_filename_base.clone() + &format!("-{:03}.{}", iimg, "ppm");
-										// let image_filename_pbm = image_filename_base + &format!("-{:03}.{}", iimg, "pbm");
-										let outpath_ppm = PathBuf::from(image_filename_ppm);
-										// let outpath_pbm = PathBuf::from(&image_filename_pbm);
-										let outpath;
-										if outpath_ppm.exists() {
-											outpath = outpath_ppm;
-										// } else if outpath_pbm.exists() {
-										// 	outpath = outpath_pbm;
-										// } else {
-										// 	return Err(format!("Unknown PDF embedded image file extension: {}", image_filename_pbm).into());
-										// }
+									warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
+								} else {
+									//println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+									let output = String::from_utf8_lossy(&output.stdout);
+									let output = output.lines();
+									for line in output {
+										if let Some((image_filename, _)) = line.split_once(": ") {
+											// println!(">>> {}", image_filename);
+											let outpath = PathBuf::from(image_filename);
 											let mut new_parent_files = parent_files.clone();
 											new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
 											extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
-										} else {
-											debug!("No PDF embedded image found: {:?}", outpath_ppm);
 										}
 									}
 								}
 							}
-						}
-						Err(e) => {
-							println!("{:#?}", command);
-							panic!("Failed to execute {:?}: {}", command.get_program(), e);
+							Err(e) => {
+								println!("{:#?}", command);
+								return Err(format!("Failed to execute {:?}: {}", command.get_program(), e).into())
+							}
 						}
 					}
+					#[cfg(target_os = "linux")]
+					{
+						//linux, first get list of images in page, then extract
+						let mut command = Command::new("pdfimages");
+						command
+							.arg("-f").arg(format!("{}", page_number))
+							.arg("-l").arg(format!("{}", page_number))
+							.arg("-list")
+							.arg(format!("{}", filepath.to_string_lossy().to_string()));
+						debug!("{:#?}", command);
+						match command.output() {
+							Ok(output) => {
+								if !output.stderr.is_empty() {
+									debug!("{:#?}", command);
+									warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
+								} else {
+									let output = String::from_utf8_lossy(&output.stdout);
+									//println!("stdout: {}", output);
+									let image_output_lines:Vec<&str> = output.trim_end().lines().collect();
+									//println!("*** image_output_lines\n{:?}", image_output_lines);
+									let num_images = image_output_lines.len() - 2;
+									// println!(">>> num_images {}", num_images);
+									if num_images > 0 {
+										//export
+										let image_filename_prefix = pdfimages_outpath.to_string_lossy().to_string();
+										let mut command = Command::new("pdfimages");
+										command
+											.arg("-f").arg(format!("{}", page_number))
+											.arg("-l").arg(format!("{}", page_number))
+											.arg(format!("{}", filepath.to_string_lossy().to_string()))
+											.arg(format!("{}", image_filename_prefix));
+										debug!("{:#?}", command);
+										match command.output() {
+											Ok(output) => {
+												if !output.stderr.is_empty() {
+													debug!("{:#?}", command);
+													warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
+												}
+											}
+											Err(e) => {
+												println!("{:#?}", command);
+												return Err(format!("Failed to execute {:?}: {}", command.get_program(), e).into())
+											}
+										}
+										for iimg in 0..num_images {
+											// let image_info:Vec<&str> = image_output_lines[iimg+2].split_ascii_whitespace().collect();
+											//type image -> .ppm, type stencil -> .pbm
+											// let image_type = image_info[2];
+											// let image_color = image_info[5];
+											// let image_ext;
+											// if image_color == "index" {
+											// 	image_ext = "pbm";
+											// } else if image_color == "gray" {
+											// 	image_ext = "pbm";
+											// } else if image_type == "stencil" {
+											// 	image_ext = "pbm";
+											// } else if image_type == "image" {
+											// 	image_ext = "ppm";
+											// } else if image_type == "smask" {
+											// 	image_ext = "ppm";
+											// } else {
+											// 	return Err(format!("Unknown PDF embedded image type {}", image_type).into());
+											// }
+											// println!("image_info\n{:?}", image_info);
+											let image_filename_base = image_filename_prefix.clone();
+											let image_filename_ppm = image_filename_base.clone() + &format!("-{:03}.{}", iimg, "ppm");
+											// let image_filename_pbm = image_filename_base + &format!("-{:03}.{}", iimg, "pbm");
+											let outpath_ppm = PathBuf::from(image_filename_ppm);
+											// let outpath_pbm = PathBuf::from(&image_filename_pbm);
+											let outpath;
+											if outpath_ppm.exists() {
+												outpath = outpath_ppm;
+											// } else if outpath_pbm.exists() {
+											// 	outpath = outpath_pbm;
+											// } else {
+											// 	return Err(format!("Unknown PDF embedded image file extension: {}", image_filename_pbm).into());
+											// }
+												let mut new_parent_files = parent_files.clone();
+												new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
+												extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+											} else {
+												debug!("No PDF embedded image found: {:?}", outpath_ppm);
+											}
+										}
+									}
+								}
+							}
+							Err(e) => {
+								println!("{:#?}", command);
+								return Err(format!("Failed to execute {:?}: {}", command.get_program(), e).into())
+							}
+						}
 
+					}
 				}
 			}
 
@@ -976,11 +1028,11 @@ fn ocr(filepath: &Path) -> Result<String, Box<dyn Error>> {
 	// get traineddata for eng (english) and osd (orientation and script detection)
 	let a_uuid: &str = &Uuid::new_v4().simple().to_string();
 	let outpath = tempfiles_location().join(a_uuid);
-	let mut outpath = format!("{}", outpath.to_str().expect("Path contains invalid UTF-8").to_string());
+	let mut outpath = format!("{}", outpath.to_string_lossy().to_string());
 	let mut command = Command::new("tesseract");
 	command
 		.arg("-l").arg("eng")
-		.arg(format!("{}", filepath.to_str().expect("Path contains invalid UTF-8").to_string()))
+		.arg(format!("{}", filepath.to_string_lossy().to_string()))
 		.arg(&outpath);
 	trace!("{:#?}", command);
 	match command.output() {
@@ -989,7 +1041,7 @@ fn ocr(filepath: &Path) -> Result<String, Box<dyn Error>> {
 		}
 		Err(e) => {
 			println!("{:#?}", command);
-			panic!("Failed to execute {:?}: {}", command.get_program(), e);
+			return Err(format!("Failed to execute {:?}: {}", command.get_program(), e).into())
 		}
 	}
 	outpath.push_str(&".txt");
