@@ -61,7 +61,7 @@ fn main()  -> Result<(), Box<dyn Error>> {
 	// let subpath = Path::new("empty_file");
 	// let subpath = Path::new("archives/EICAR_test_virus.TXT.zip");
 	// let subpath = Path::new("archives/ArtemisTestVirusWithSignedExes.7z");
-	let subpath = Path::new("archives/SSMS18.7z");
+	// let subpath = Path::new("archives/SSMS18.7z");
 	// let subpath = Path::new("binary/fpext.msg");
 	// let subpath = Path::new("txt/text_utf8.txt");
 	// let subpath = Path::new("txt/text_utf16le.txt");
@@ -73,6 +73,7 @@ fn main()  -> Result<(), Box<dyn Error>> {
 	// let subpath = Path::new("docs/IC3_231019_gradient.xls");
 	// let subpath = Path::new("docs/CPROD - 13NZAK0060930 - 20130927.xlsx");
 	// let subpath = Path::new("docs/5407953830.pdf");
+	let subpath = Path::new("docs/ILEADER-V4 3-User Manual-Administration Module-1.0.0.pdf");
 	// let subpath = Path::new("docs/Geoforce - pointage - flux vers Chronos v2.pdf");
 	// let subpath = Path::new("docs/Developmental-History-Form.pdf");
 	// let subpath = Path::new("emails/msg_in_msg_in_msg.msg");
@@ -80,8 +81,8 @@ fn main()  -> Result<(), Box<dyn Error>> {
 	// let subpath = Path::new("emails/test_email_1.msg");
 	// let subpath = Path::new("emails/COD eLIMS.msg");
 
-	let path = Path::new(r"C:\Users\hrag\Sync\health\20121014_LeftAnkle_MRI_SRG.7z");
-	// let path = Path::new("./tests/resources/files_to_scan").join(subpath);
+	// let path = Path::new(r"C:\Users\hrag\Sync\work\Auditing\iLeader\iLeader Docs.7z");
+	let path = Path::new("./tests/resources/files_to_scan").join(subpath);
 	let file_crc = checksum_file(Crc64Nvme, path.to_str().unwrap(), None).unwrap() as i64;
 	debug!("file_crc: {}", file_crc);
 	let pre_scanned_items: Vec<FileListItem> = Vec::new();
