@@ -295,6 +295,12 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 
 	debug!("filepath: {:?}", filepath);
 	if filepath.metadata()?.len() == 0 {
+		list_of_files_in_archive.push(SubFileItem {
+			filepath: filepath.to_path_buf(),
+			depth,
+			parent_files: parent_files.clone(),
+			ok_to_extract_text: true,
+		});
 		return Ok(())
 	}
 
