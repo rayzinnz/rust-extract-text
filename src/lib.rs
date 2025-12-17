@@ -47,7 +47,8 @@ struct MagicBytes {
 }
 
 // https://en.wikipedia.org/wiki/List_of_file_signatures
-const MAGIC_BYTES: [MagicBytes; 7] = [
+const MAGIC_BYTES: [MagicBytes; 8] = [
+	MagicBytes { extension: "cfb", bytes: &[0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1] },
 	MagicBytes { extension: "7z", bytes: &[0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C] },
 	MagicBytes { extension: "pdf", bytes: &[0x25, 0x50, 0x44, 0x46, 0x2D] },
 	MagicBytes { extension: "zip", bytes: &[0x50, 0x4B, 0x03, 0x04] },
@@ -75,26 +76,45 @@ fn get_effective_file_extension(filepath: &Path) -> String {
 	//handled extensions
 	let file_extension = filepath.extension().unwrap_or_default().to_string_lossy().to_lowercase();
 
+	//cfb DOCFILE magic bytes file types
 	if [
-		"csv",
-		"doc","docm","docx",
-		"eml",
-		"jpeg","jpg",
-		"ods","odt",
-		"pdf","png",
-		"txt",
-		"xlam","xls","xlsb","xlsm","xlsx","xlsx",
-		].contains(&file_extension.as_str()) {
-		return file_extension;
-	}
-
-	//msg match both extension and cfb DOCFILE magic bytes.
-	if file_extension == "msg" {
+		String::from("msg"),
+		String::from("doc"),
+		String::from("xls"),
+	].contains(&file_extension) {
+		let cfb_bytes = MAGIC_BYTES.iter().find(|x| x.extension=="cfb").unwrap().bytes;
+		// println!("cfb_bytes: {:?}", cfb_bytes);
 		if let Ok(mut file) = File::open(filepath) {
 			let mut header = [0u8; 8];
 			if file.read_exact(&mut header).is_ok() {
-				if header == [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1] {
-					return "msg".to_string();
+				// println!("header: {:?}", header);
+				if header == cfb_bytes {
+					return file_extension;
+				}
+			}
+		}
+		return "bin".to_string();
+	}
+
+	//zip file types
+	if [
+		String::from("docx"),
+		String::from("docm"),
+		String::from("ods"),
+		String::from("odt"),
+		String::from("xlam"),
+		String::from("xlsx"),
+		String::from("xlsm"),
+		String::from("xlsb"),
+	].contains(&file_extension) {
+		let zip_bytes = MAGIC_BYTES.iter().find(|x| x.extension=="zip").unwrap().bytes;
+		// println!("zip_bytes: {:?}", zip_bytes);
+		if let Ok(mut file) = File::open(filepath) {
+			let mut header = [0u8; 4];
+			if file.read_exact(&mut header).is_ok() {
+				// println!("header: {:?}", header);
+				if header == zip_bytes {
+					return file_extension;
 				}
 			}
 		}
@@ -109,7 +129,7 @@ fn get_effective_file_extension(filepath: &Path) -> String {
 			}
 			match File::open(filepath) {
 				Ok(mut file) => {
-					let mut header = [0u8; 6];
+					let mut header = [0u8; 8];
 					file.read_exact(&mut header).unwrap();
 					for magic_bytes in MAGIC_BYTES {
 						if *magic_bytes.bytes == header[0..magic_bytes.bytes.len()] {
@@ -274,12 +294,15 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 
 
 	debug!("filepath: {:?}", filepath);
+	if filepath.metadata()?.len() == 0 {
+		return Ok(())
+	}
 
 	let achive_uuid_subdir: &str = &Uuid::new_v4().simple().to_string();
 
 	//switch filepath extension
 	let effective_file_extension = get_effective_file_extension(filepath);
-	debug!("effective_file_extension: {:?}", effective_file_extension);
+	debug!("extract_archive: effective_file_extension: {:?}", effective_file_extension);
 
 	
 	match effective_file_extension.as_str() {
@@ -1098,12 +1121,14 @@ struct SubFileItem {
 fn extract_text_from_subfile(file_list_item: &SubFileItem) -> Result<String, Box<dyn Error>> {
 	debug!("subfile to extract text: {:?}", file_list_item.filepath);
 	
-	let file_extension = file_list_item.filepath.extension().unwrap_or_default().to_string_lossy().to_lowercase();
 	if !file_list_item.ok_to_extract_text {
 		return Ok(String::new())
 	}
+	// let file_extension = file_list_item.filepath.extension().unwrap_or_default().to_string_lossy().to_lowercase();
+	let effective_file_extension = get_effective_file_extension(&file_list_item.filepath);
+	debug!("extract_text_from_subfile: effective_file_extension: {:?}", effective_file_extension);
 
-	match file_extension.as_str() {
+	match effective_file_extension.as_str() {
 		"docx" | "docm" => {
 			//dotext
 			match <Docx as MsDoc<Docx>>::open(file_list_item.filepath.as_path()) {
