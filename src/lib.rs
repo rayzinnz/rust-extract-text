@@ -1248,7 +1248,7 @@ pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListIt
 						&& prescanned_item.parent_files == sub_file_item.parent_files
 						&& prescanned_item.crc == file_crc
 					{
-						info!("Sub file not changed, skipping...");
+						debug!("Sub file not changed, skipping...");
 						skip_file = true;
 						break;
 					}
