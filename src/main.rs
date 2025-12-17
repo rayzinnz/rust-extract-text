@@ -73,11 +73,13 @@ fn main()  -> Result<(), Box<dyn Error>> {
 	// let subpath = Path::new("docs/IC3_231019_gradient.xls");
 	// let subpath = Path::new("docs/CPROD - 13NZAK0060930 - 20130927.xlsx");
 	// let subpath = Path::new("docs/5407953830.pdf");
-	let subpath = Path::new("docs/ILEADER-V4 3-User Manual-Administration Module-1.0.0.pdf");
+	// let subpath = Path::new("docs/ImageFusion_Module_User_Guide.pdf");
+	// let subpath = Path::new("docs/ILEADER-V4 3-User Manual-Administration Module-1.0.0.pdf");
 	// let subpath = Path::new("docs/Geoforce - pointage - flux vers Chronos v2.pdf");
 	// let subpath = Path::new("docs/Developmental-History-Form.pdf");
+	// let subpath = Path::new("docs/Testing.docx");
 	// let subpath = Path::new("emails/msg_in_msg_in_msg.msg");
-	// let subpath = Path::new("emails/msg_in_msg.msg");
+	let subpath = Path::new("emails/msg_in_msg.msg");
 	// let subpath = Path::new("emails/test_email_1.msg");
 	// let subpath = Path::new("emails/COD eLIMS.msg");
 
