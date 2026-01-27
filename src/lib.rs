@@ -257,7 +257,8 @@ fn msg_get_contents(cfbf: &mut CompoundFile<File>, path: PathBuf) -> Result<(Str
 			subject = data.to_string();
 		}
 	} else {
-		return Err(format!("Subject stream not found in {:?}", path).into())
+		//return Err(format!("Subject stream not found in {:?}", path).into())
+		subject = String::new();
 	}
 
 	//body 0x1000 Body, 0x001F UTF_16LE, 0x001E ASCII
