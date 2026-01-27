@@ -83,8 +83,8 @@ fn main()  -> Result<(), Box<dyn Error>> {
 	// let subpath = Path::new("emails/test_email_1.msg");
 	// let subpath = Path::new("emails/COD eLIMS.msg");
 
-	// let path = Path::new(r"C:\Users\hrag\Sync\work\Auditing\iLeader\iLeader Docs.7z");
-	let path = Path::new("./tests/resources/files_to_scan").join(subpath);
+	let path = Path::new(r"C:\Users\hrag\OutlookData\msg\2024\00000000C7F8C00B15EB354CBCBF42D6B5700609E4DF2400.msg");
+	// let path = Path::new("./tests/resources/files_to_scan").join(subpath);
 	let file_crc = checksum_file(Crc64Nvme, path.to_str().unwrap(), None).unwrap() as i64;
 	debug!("file_crc: {}", file_crc);
 	let pre_scanned_items: Vec<FileListItem> = Vec::new();

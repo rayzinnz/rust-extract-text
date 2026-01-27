@@ -241,7 +241,7 @@ fn msg_get_contents(cfbf: &mut CompoundFile<File>, path: PathBuf) -> Result<(Str
 	let mut body = String::new();
 	let mut sub_paths: Vec<PathBuf> = Vec::new();
 
-	//subject 0x0037 Subject, 0x001F UTF_16LE
+	//subject 0x0037 Subject, 0x001F UTF_16LE, 0x001E ASCII
 	if let Ok(mut stream) = cfbf.open_stream(path.join("__substg1.0_0037001F")) {
 		let mut data = Vec::new();
 		if let Ok(_) = stream.read_to_end(&mut data) {
@@ -249,17 +249,31 @@ fn msg_get_contents(cfbf: &mut CompoundFile<File>, path: PathBuf) -> Result<(Str
 			// println!("{:?}", data);
 			subject = data.0.to_string();
 		}
+	} else if let Ok(mut stream) = cfbf.open_stream(path.join("__substg1.0_0037001E")) {
+		let mut data = Vec::new();
+		if let Ok(_) = stream.read_to_end(&mut data) {
+			let data = String::from_utf8_lossy(&data);
+			// println!("{:?}", data);
+			subject = data.to_string();
+		}
 	} else {
 		return Err(format!("Subject stream not found in {:?}", path).into())
 	}
 
-	//body 0x1000 Body, 0x001F UTF_16LE
+	//body 0x1000 Body, 0x001F UTF_16LE, 0x001E ASCII
 	if let Ok(mut stream) = cfbf.open_stream(path.join("__substg1.0_1000001F")) {
 		let mut data = Vec::new();
 		if let Ok(_) = stream.read_to_end(&mut data) {
 			let data = UTF_16LE.decode(&data);
 			// println!("{:?}", data);
 			body = data.0.to_string();
+		}
+	} else if let Ok(mut stream) = cfbf.open_stream(path.join("__substg1.0_1000001E")) {
+		let mut data = Vec::new();
+		if let Ok(_) = stream.read_to_end(&mut data) {
+			let data = String::from_utf8_lossy(&data);
+			// println!("{:?}", data);
+			body = data.to_string();
 		}
 	} else {
 		return Err(format!("Body stream not found in {:?}", path).into())
@@ -493,6 +507,11 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 								stream.read_to_end(&mut data)?;
 								let data = UTF_16LE.decode(&data);
 								filename = data.0.to_string();
+							} else if let Ok(mut stream) = cfbf.open_stream(sub_path.join("__substg1.0_3707001E")) {
+								let mut data = Vec::new();
+								stream.read_to_end(&mut data)?;
+								let data = String::from_utf8_lossy(&data);
+								filename = data.to_string();
 							} else {
 								return Err(format!("Body stream not found in {:?}", filepath).into())
 							}
@@ -526,6 +545,11 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 								stream.read_to_end(&mut data)?;
 								let data = UTF_16LE.decode(&data);
 								displayname = data.0.to_string();
+							} else if let Ok(mut stream) = cfbf.open_stream(sub_path.join("__substg1.0_3001001E")) {
+								let mut data = Vec::new();
+								stream.read_to_end(&mut data)?;
+								let data = String::from_utf8_lossy(&data);
+								displayname = data.to_string();
 							} else {
 								return Err(format!("Body stream not found in {:?}", filepath).into())
 							}
