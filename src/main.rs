@@ -1,12 +1,12 @@
 use crc_fast::{checksum_file, CrcAlgorithm::Crc64Nvme};
 use extract_text::*;
 use helper_lib::{
+	setup_logger,
 	watch_for_quit,
 	paths::add_extension
 };
 use log::*;
 use serde_json;
-use simplelog::*;
 use std::{
 	error::Error,
 	fs,
@@ -19,17 +19,7 @@ use std::{
 };
 
 fn main()  -> Result<(), Box<dyn Error>> {
-    let logger_config = ConfigBuilder::new()
-		.set_time_offset_to_local().expect("Failed to get local time offset")
-		.set_time_format_custom(format_description!("[hour]:[minute]:[second].[subsecond digits:3]"))
-        .build();
-	CombinedLogger::init(
-        vec![
-            TermLogger::new(LevelFilter::Trace, logger_config, TerminalMode::Mixed, ColorChoice::Auto),
-			// TermLogger::new(LevelFilter::Debug, Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
-            // WriteLogger::new(LevelFilter::Info, Config::default(), File::create("my_rust_binary.log").unwrap()),
-        ]
-    ).unwrap();
+	setup_logger(LevelFilter::Trace);
 
 	// error!("Bright red error");
     // info!("This only appears in the log file");
@@ -83,7 +73,7 @@ fn main()  -> Result<(), Box<dyn Error>> {
 	// let subpath = Path::new("emails/test_email_1.msg");
 	// let subpath = Path::new("emails/COD eLIMS.msg");
 
-	let path = Path::new(r"C:\Users\hrag\DUMP\00000000C7F8C00B15EB354CBCBF42D6B570060904C22600.msg");
+	let path = Path::new(r"C:\Users\hrag\OutlookData\ITSolutionsTickets\2025\00000000812638D851360E448831BA5A9840D7BF07002E78EC35ADE8584380BC921B751443360000000077060000297FFB338CA0F0478C9CD0346D85E255000041D41B340000.msg");
 	// let path = Path::new("./tests/resources/files_to_scan").join(subpath);
 	let file_crc = checksum_file(Crc64Nvme, path.to_str().unwrap(), None).unwrap() as i64;
 	debug!("file_crc: {}", file_crc);
