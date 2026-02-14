@@ -73,7 +73,7 @@ fn main()  -> Result<(), Box<dyn Error>> {
 	// let subpath = Path::new("emails/test_email_1.msg");
 	// let subpath = Path::new("emails/COD eLIMS.msg");
 
-	let path = Path::new(r"C:\Users\hrag\OutlookData\ITSolutionsTickets\2025\00000000812638D851360E448831BA5A9840D7BF07002E78EC35ADE8584380BC921B751443360000000077060000297FFB338CA0F0478C9CD0346D85E255000041D41B340000.msg");
+	let path = Path::new(r"C:\Users\hrag\OutlookData\msg\2025\0000000021E0AFA9061A34478C80FDB1BAD8EB19070006FB7EE1848CC24391723BE05D1422A5000000000109000006FB7EE1848CC24391723BE05D1422A50000F8CA34EA0000.msg");
 	// let path = Path::new("./tests/resources/files_to_scan").join(subpath);
 	let file_crc = checksum_file(Crc64Nvme, path.to_str().unwrap(), None).unwrap() as i64;
 	debug!("file_crc: {}", file_crc);
