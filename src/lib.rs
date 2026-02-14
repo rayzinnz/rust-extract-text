@@ -520,7 +520,14 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							} else {
 								return Err(format!("Body stream not found in {:?}", filepath).into())
 							}
-							filename.push_str(&file_id);
+							match filename.rsplit_once(".") {
+								Some((noext, ext)) => {
+									filename = noext.to_owned() + "_" + &file_id + "." + ext;
+								},
+								None => {
+									filename.push_str(&file_id);
+								}
+							}
 							//download binary attachment
 							let mut stream = cfbf.open_stream(sub_path.join("__substg1.0_37010102"))?;
 							let mut data = Vec::new();
