@@ -11,6 +11,7 @@ use cfb::CompoundFile;
 use crc_fast::{checksum_file, CrcAlgorithm::Crc64Nvme};
 use encoding_rs::{Encoding, UTF_8, UTF_16BE, UTF_16LE, WINDOWS_1252};
 use encoding_rs_io::DecodeReaderBytesBuilder;
+use helper_lib::strings::get_last_n_chars;
 use log::*;
 use mail_parser::{MessageParser, MimeHeaders};
 use serde::{Serialize, Deserialize};
@@ -47,12 +48,14 @@ struct MagicBytes {
 }
 
 // https://en.wikipedia.org/wiki/List_of_file_signatures
-const MAGIC_BYTES: [MagicBytes; 8] = [
+const MAGIC_BYTES: [MagicBytes; 10] = [
 	MagicBytes { extension: "cfb", bytes: &[0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1] },
+	MagicBytes { extension: "png", bytes: &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] },
 	MagicBytes { extension: "7z", bytes: &[0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C] },
 	MagicBytes { extension: "pdf", bytes: &[0x25, 0x50, 0x44, 0x46, 0x2D] },
 	MagicBytes { extension: "zip", bytes: &[0x50, 0x4B, 0x03, 0x04] },
 	MagicBytes { extension: "txt", bytes: &[0xEF, 0xBB, 0xBF] },
+	MagicBytes { extension: "jpg", bytes: &[0xFF, 0xD8, 0xFF] },
 	MagicBytes { extension: "gzip", bytes: &[0x1F, 0x8B] },
 	MagicBytes { extension: "txt", bytes: &[0xFE, 0xFF] },
 	MagicBytes { extension: "txt", bytes: &[0xFF, 0xFE] },
@@ -498,11 +501,12 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 					debug!("sub_paths: {:?}", sub_paths);
 					for sub_path in sub_paths {
 						debug!("depth: {}, path: {:?}", sub_path.components().count()-1, sub_path);
+						let file_id = get_last_n_chars(&sub_path.to_string_lossy(), 2);
 						// attachment binary, 0x3701 AttachDataObject, 0x0102 PT_BINARY
 						if cfbf.exists(sub_path.join("__substg1.0_37010102")) {
 							// println!("Binary attachment");
 							//attachment filename, 0x3707 AttachLongFilename, 0x001F UTF_16LE
-							let filename: String;
+							let mut filename: String;
 							if let Ok(mut stream) = cfbf.open_stream(sub_path.join("__substg1.0_3707001F")) {
 								let mut data = Vec::new();
 								stream.read_to_end(&mut data)?;
@@ -516,6 +520,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							} else {
 								return Err(format!("Body stream not found in {:?}", filepath).into())
 							}
+							filename.push_str(&file_id);
 							//download binary attachment
 							let mut stream = cfbf.open_stream(sub_path.join("__substg1.0_37010102"))?;
 							let mut data = Vec::new();
