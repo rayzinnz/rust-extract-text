@@ -6,6 +6,7 @@
 //! logging and walks a directory recursively.
 
 
+use anyhow::{Error, bail};
 use calamine::{open_workbook_auto, DataType, Reader};
 use cfb::CompoundFile;
 use crc_fast::{checksum_file, CrcAlgorithm::Crc64Nvme};
@@ -18,7 +19,6 @@ use serde::{Serialize, Deserialize};
 use sevenz_rust::decompress_file_with_password;
 use std::{
 	collections::HashSet,
-	error::Error,
 	fs::{self, File},
 	io::{self, BufRead, BufReader, Read, Seek, SeekFrom},
 	path::{Path, PathBuf},
@@ -155,7 +155,7 @@ fn get_effective_file_extension(filepath: &Path) -> String {
 	return file_extension;
 }
 
-fn read_file_with_encoding(filepath: &Path, encoding: &'static Encoding) -> Result<String, Box<dyn Error>> {
+fn read_file_with_encoding(filepath: &Path, encoding: &'static Encoding) -> anyhow::Result<String> {
     let file = File::open(filepath)?;
 	let mut decoder = DecodeReaderBytesBuilder::new()
         .encoding(Some(encoding)) // Specify the source encoding
@@ -239,7 +239,7 @@ fn detect_encoding(filepath: &Path, assume_utf8: bool) -> &'static Encoding {
 // 		.collect()
 // }
 
-fn msg_get_contents(cfbf: &mut CompoundFile<File>, path: PathBuf) -> Result<(String, String, Vec<PathBuf>), Box<dyn Error>> {
+fn msg_get_contents(cfbf: &mut CompoundFile<File>, path: PathBuf) -> anyhow::Result<(String, String, Vec<PathBuf>)> {
 	let mut subject = String::new();
 	let mut body = String::new();
 	let mut sub_paths: Vec<PathBuf> = Vec::new();
@@ -280,7 +280,7 @@ fn msg_get_contents(cfbf: &mut CompoundFile<File>, path: PathBuf) -> Result<(Str
 			body = data.to_string();
 		}
 	} else {
-		return Err(format!("Body stream not found in {:?}", path).into())
+		bail!("Body stream not found in {:?}", path)
 	}
 
 	//attachments
@@ -308,7 +308,7 @@ fn msg_get_contents(cfbf: &mut CompoundFile<File>, path: PathBuf) -> Result<(Str
 /// # Returns
 /// 
 /// * A heirarchal list of filepaths of any extracted files, includes the top-level file
-fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of_files_in_archive: &mut Vec<SubFileItem>) -> Result<(), Box<dyn Error>> {
+fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of_files_in_archive: &mut Vec<SubFileItem>) -> anyhow::Result<()> {
 
 
 	debug!("filepath: {:?}", filepath);
@@ -363,7 +363,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 						sevenz_rust::Error::MaybeBadPassword(msg) => {
 							warn!("sevenz_rust::Error::MaybeBadPassword: {}", msg);
 						}
-						_ => return Err(Box::new(err))
+						_ => return Err(Error::from(err))
 					}
 				}
 			}
@@ -518,7 +518,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 								let data = String::from_utf8_lossy(&data);
 								filename = data.to_string();
 							} else {
-								return Err(format!("Body stream not found in {:?}", filepath).into())
+								bail!("Body stream not found in {:?}", filepath)
 							}
 							match filename.rsplit_once(".") {
 								Some((noext, ext)) => {
@@ -564,7 +564,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 								let data = String::from_utf8_lossy(&data);
 								displayname = data.to_string();
 							} else {
-								return Err(format!("Body stream not found in {:?}", filepath).into())
+								bail!("Body stream not found in {:?}", filepath)
 							}
 							displayname.retain(|c| !FILENAME_ILLEGAL_CHARS.contains(&c));
 							//empty file placeholder as embedded msg
@@ -614,7 +614,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							}
 						}
 						else {
-							return Err(format!("Unknown attachment type. Path: {:?}, file: {:?}", sub_path, filepath).into())
+							bail!("Unknown attachment type. Path: {:?}, file: {:?}", sub_path, filepath)
 						}
 					}
 				}
@@ -693,7 +693,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 									page_count = pc;
 								} else {
 									println!("{:#?}", command);
-									return Err(format!("No page count found in PDF {}", filepath.to_string_lossy()).into())
+									bail!("No page count found in PDF {}", filepath.to_string_lossy())
 								}
 							}
 						}
@@ -701,7 +701,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 				}
 				Err(e) => {
 					println!("{:#?}", command);
-					return Err(format!("Failed to execute {:?}: {}", command.get_program(), e).into())
+					bail!("Failed to execute {:?}: {}", command.get_program(), e)
 				}
 			}
 			trace!("PDF page count {}", page_count);
@@ -740,7 +740,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 					}
 					Err(e) => {
 						println!("{:#?}", command);
-						return Err(format!("Failed to execute {:?}: {}", command.get_program(), e).into())
+						bail!("Failed to execute {:?}: {}", command.get_program(), e)
 					}
 				}
 
@@ -778,7 +778,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							}
 							Err(e) => {
 								println!("{:#?}", command);
-								return Err(format!("Failed to execute {:?}: {}", command.get_program(), e).into())
+								bail!("Failed to execute {:?}: {}", command.get_program(), e)
 							}
 						}
 					}
@@ -823,7 +823,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							}
 							Err(e) => {
 								println!("{:#?}", command);
-								return Err(format!("Failed to execute {:?}: {}", command.get_program(), e).into())
+								bail!("Failed to execute {:?}: {}", command.get_program(), e)
 							}
 						}
 					}
@@ -868,7 +868,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 											}
 											Err(e) => {
 												println!("{:#?}", command);
-												return Err(format!("Failed to execute {:?}: {}", command.get_program(), e).into())
+												bail!("Failed to execute {:?}: {}", command.get_program(), e)
 											}
 										}
 										for iimg in 0..num_images {
@@ -916,7 +916,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							}
 							Err(e) => {
 								println!("{:#?}", command);
-								return Err(format!("Failed to execute {:?}: {}", command.get_program(), e).into())
+								bail!("Failed to execute {:?}: {}", command.get_program(), e)
 							}
 						}
 
@@ -1066,7 +1066,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 								info!("Zip file not supported: ({}) {:?}", errtxt, filepath);
 								break;
 							}
-							_ => return Err(Box::new(err)),
+							_ => return Err(Error::from(err)),
 						}
 					}
 				}
@@ -1087,7 +1087,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 	Ok(())
 }
 
-fn ocr(filepath: &Path) -> Result<String, Box<dyn Error>> {
+fn ocr(filepath: &Path) -> anyhow::Result<String> {
 	// tesseract -l eng "C:\Users\hrag\AppData\Local\Temp\extract_text_from_file\43766efc4742438884b0f109fd6a6bac\image-0001.ppm" C:\Users\hrag\AppData\Local\Temp\extract_text_from_file\43766efc4742438884b0f109fd6a6bac\ocr
 	// https://tesseract-ocr.github.io/tessdoc/Command-Line-Usage.html
 	// https://github.com/tesseract-ocr/tessdata_fast
@@ -1107,7 +1107,7 @@ fn ocr(filepath: &Path) -> Result<String, Box<dyn Error>> {
 		}
 		Err(e) => {
 			println!("{:#?}", command);
-			return Err(format!("Failed to execute {:?}: {}", command.get_program(), e).into())
+			bail!("Failed to execute {:?}: {}", command.get_program(), e)
 		}
 	}
 	outpath.push_str(&".txt");
@@ -1136,7 +1136,7 @@ fn convert_accented_manual(s: &str) -> String {
 		.collect()
 }
 
-fn read_text_from_file(filepath: &Path) -> Result<String, Box<dyn Error>> {
+fn read_text_from_file(filepath: &Path) -> anyhow::Result<String> {
 	let file_encoding = detect_encoding(filepath, false);
 	debug!("file_encoding: {:?}", file_encoding);
 	let mut contents = read_file_with_encoding(filepath, file_encoding)?;
@@ -1161,7 +1161,7 @@ struct SubFileItem {
 	ok_to_extract_text: bool,
 }
 
-fn extract_text_from_subfile(file_list_item: &SubFileItem) -> Result<String, Box<dyn Error>> {
+fn extract_text_from_subfile(file_list_item: &SubFileItem) -> anyhow::Result<String> {
 	debug!("subfile to extract text: {:?}", file_list_item.filepath);
 	
 	if !file_list_item.ok_to_extract_text {
@@ -1231,7 +1231,7 @@ pub struct FileListItem {
 	pub text_contents: Option<String>
 }
 
-pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListItem>, keep_going: Arc<AtomicBool>) -> Result<Vec<FileListItem>, Box<dyn Error>> {
+pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListItem>, keep_going: Arc<AtomicBool>) -> anyhow::Result<Vec<FileListItem>> {
 	let mut list_of_files_in_archive: Vec<SubFileItem> = Vec::new();
 	let parent_files: Vec<String> = Vec::new();
 	extract_archive(filepath, 0, parent_files, &mut list_of_files_in_archive)?;
@@ -1325,7 +1325,7 @@ pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListIt
 			}
 			Err(e) => {
 				keep_going.store(false, Ordering::Relaxed);
-				return Err(format!("Error getting metadata for file: {:?} error: {:?}", sub_file_item.filepath, e).into());
+				bail!("Error getting metadata for file: {:?} error: {:?}", sub_file_item.filepath, e);
 			}
 		}
 
