@@ -1341,6 +1341,20 @@ pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListIt
 	Ok(file_list_items)
 }
 
+pub fn extract_text_from_file_to_string(filepath: &Path, pre_scanned_items: Option<Vec<FileListItem>>, keep_going: Option<Arc<AtomicBool>>) -> anyhow::Result<String> {
+	let mut rtn = String::new();
+
+	let contents = extract_text_from_file(filepath, pre_scanned_items.unwrap_or_default(), keep_going.unwrap_or(Arc::new(AtomicBool::new(true))))?;
+	for fli in contents {
+		if let Some(text_to_add) = fli.text_contents {
+			rtn.push_str(&text_to_add);
+			rtn.push_str("\n");
+		}
+	}
+
+	return Ok(rtn)
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;

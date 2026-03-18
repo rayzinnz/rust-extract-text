@@ -79,7 +79,8 @@ fn main()  -> Result<(), Box<dyn Error>> {
 	debug!("file_crc: {}", file_crc);
 	let pre_scanned_items: Vec<FileListItem> = Vec::new();
 	let keep_going_flag = keep_going.clone();
-	let contents = extract_text_from_file(&path, pre_scanned_items, keep_going_flag)?;
+	// let contents = extract_text_from_file(&path, pre_scanned_items, keep_going_flag)?;
+	let contents = extract_text_from_file_to_string(&path, None, None)?;
 
 	debug!("{:#?}", contents);
 
