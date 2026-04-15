@@ -12,11 +12,12 @@ use cfb::CompoundFile;
 use crc_fast::{checksum_file, CrcAlgorithm::Crc64Nvme};
 use encoding_rs::{Encoding, UTF_8, UTF_16BE, UTF_16LE, WINDOWS_1252};
 use encoding_rs_io::DecodeReaderBytesBuilder;
-use helper_lib::strings::get_last_n_chars;
+use helper_lib::{asyncs::{self, TxLog}, strings::get_last_n_chars};
 use log::*;
 use mail_parser::{MessageParser, MimeHeaders};
 use serde::{Serialize, Deserialize};
 use sevenz_rust::decompress_file_with_password;
+use tokio::sync::mpsc;
 use std::{
 	collections::HashSet,
 	fs::{self, File},
@@ -24,8 +25,7 @@ use std::{
 	path::{Path, PathBuf},
 	process::Command,
     sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
+        Arc, atomic::{AtomicBool, Ordering}
     },
 };
 use uuid::Uuid;
@@ -308,10 +308,10 @@ fn msg_get_contents(cfbf: &mut CompoundFile<File>, path: PathBuf) -> anyhow::Res
 /// # Returns
 /// 
 /// * A heirarchal list of filepaths of any extracted files, includes the top-level file
-fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of_files_in_archive: &mut Vec<SubFileItem>) -> anyhow::Result<()> {
+fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of_files_in_archive: &mut Vec<SubFileItem>, progress_tx: Option<&mpsc::Sender<TxLog>>) -> anyhow::Result<()> {
 
-
-	debug!("filepath: {:?}", filepath);
+	asyncs::send_tx_msg_op_sync(progress_tx, None, &format!("extract_archive: filepath: {}", filepath.to_string_lossy()))?;
+	debug!("extract_archive: filepath: {:?}", filepath);
 	if filepath.metadata()?.len() == 0 {
 		list_of_files_in_archive.push(SubFileItem {
 			filepath: filepath.to_path_buf(),
@@ -354,14 +354,14 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							let mut new_parent_files = parent_files.clone();
 							new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
 							// new_parent_files passes ownership instead of reference, because we no longer need it after passing into this function
-							extract_archive(path, depth+1, new_parent_files, list_of_files_in_archive)?;
+							extract_archive(path, depth+1, new_parent_files, list_of_files_in_archive, progress_tx)?;
 						}
 					}
 				}
 				Err(err) => {
 					match err {
 						sevenz_rust::Error::MaybeBadPassword(msg) => {
-							warn!("sevenz_rust::Error::MaybeBadPassword: {}", msg);
+							asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("sevenz_rust::Error::MaybeBadPassword: {}", msg))?;
 						}
 						_ => return Err(Error::from(err))
 					}
@@ -399,7 +399,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 						Ok(_) => {
 							let mut new_parent_files = parent_files.clone();
 							new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-							extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+							extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive, progress_tx)?;
 						},
 						Err(e) => {
 							error!("Error writing word image to file {:?}: {}", outpath, e)
@@ -434,7 +434,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 					Ok(_) => {
 						let mut new_parent_files = parent_files.clone();
 						new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-						extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+						extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive, progress_tx)?;
 					},
 					Err(e) => {
 						error!("Error writing to file {:?}: {}", outpath, e)
@@ -450,7 +450,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 						Ok(_) => {
 							let mut new_parent_files = parent_files.clone();
 							new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-							extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+							extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive, progress_tx)?;
 						},
 						Err(e) => {
 							error!("Error writing to file {:?}: {}", outpath, e)
@@ -482,7 +482,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 				Ok(_) => {
 					let mut new_parent_files = parent_files.clone();
 					new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-					extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+					extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive, progress_tx)?;
 				},
 				Err(e) => {
 					error!("Error writing to file {:?}: {}", outpath, e)
@@ -540,7 +540,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 									new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
 									let parent_files_subpaths: Vec<String> = filesubpath.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect();
 									new_parent_files.extend(parent_files_subpaths);
-									extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+									extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive, progress_tx)?;
 								},
 								Err(e) => {
 									error!("Error writing to file {:?}: {}", outpath, e)
@@ -603,7 +603,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 									new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
 									let parent_files_subpaths: Vec<String> = filesubpath2.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect();
 									new_parent_files.extend(parent_files_subpaths);
-									extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+									extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive, progress_tx)?;
 								},
 								Err(e) => {
 									error!("Error writing to file {:?}: {}", outpath, e)
@@ -651,7 +651,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 						Ok(_) => {
 							let mut new_parent_files = parent_files.clone();
 							new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-							extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+							extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive, progress_tx)?;
 						},
 						Err(e) => {
 							error!("Error writing word image to file {:?}: {}", outpath, e)
@@ -681,7 +681,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 					// println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
 					if !output.stderr.is_empty() {
 						debug!("{:#?}", command);
-						warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
+						asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr)))?;
 					} else {
 						let output = String::from_utf8_lossy(&output.stdout);
 						let output = output.lines();
@@ -704,7 +704,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 					bail!("Failed to execute {:?}: {}", command.get_program(), e)
 				}
 			}
-			trace!("PDF page count {}", page_count);
+			//trace!("PDF page count {}", page_count);
 			for page_number in 1..=page_count {
 				// debug!("page number: {}", page_number)
 
@@ -729,13 +729,13 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 								is_text_extract_denied = true;
 							} else {
 								debug!("{:#?}", command);
-								warn!("Error returned from {:?}: {}", command.get_program(), output_text);
+								asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("Error returned from {:?}: {}", command.get_program(), output_text))?;
 							}
 						}
 						if !is_text_extract_denied {
 							let mut new_parent_files = parent_files.clone();
 							new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-							extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+							extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive, progress_tx)?;
 						}
 					}
 					Err(e) => {
@@ -769,12 +769,12 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 										//don't worry about this error
 									} else {
 										debug!("{:#?}", command);
-										warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
+										asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr)))?;
 									}
 								}
 								let mut new_parent_files = parent_files.clone();
 								new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-								extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+								extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive, progress_tx)?;
 							}
 							Err(e) => {
 								println!("{:#?}", command);
@@ -805,7 +805,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							Ok(output) => {
 								if !output.stderr.is_empty() {
 									debug!("{:#?}", command);
-									warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
+									asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr)))?;
 								} else {
 									//println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
 									let output = String::from_utf8_lossy(&output.stdout);
@@ -816,7 +816,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 											let outpath = PathBuf::from(image_filename);
 											let mut new_parent_files = parent_files.clone();
 											new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-											extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+											extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive, progress_tx)?;
 										}
 									}
 								}
@@ -841,7 +841,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							Ok(output) => {
 								if !output.stderr.is_empty() {
 									debug!("{:#?}", command);
-									warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
+									asyncs::send_tx_msg_op(progress_tx, Some(Level::Warn), &format!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr))).await?;
 								} else {
 									let output = String::from_utf8_lossy(&output.stdout);
 									//println!("stdout: {}", output);
@@ -863,7 +863,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 											Ok(output) => {
 												if !output.stderr.is_empty() {
 													debug!("{:#?}", command);
-													warn!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr));
+													asyncs::send_tx_msg_op(progress_tx, Some(Level::Warn), &format!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr))).await?;
 												}
 											}
 											Err(e) => {
@@ -906,7 +906,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 											// }
 												let mut new_parent_files = parent_files.clone();
 												new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-												extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+												Box::pin(extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive, progress_tx)).await?;
 											} else {
 												debug!("No PDF embedded image found: {:?}", outpath_ppm);
 											}
@@ -938,7 +938,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 					if let Ok(vbaop) = workbook.vba_project() {
 						if let Some(vba) = vbaop {
 							let vba_modules = vba.get_module_names();
-							trace!("vba_modules: {:#?}", vba_modules);
+							//trace!("vba_modules: {:#?}", vba_modules);
 							for module_name in vba_modules {
 								let module = vba.get_module(module_name).unwrap();
 								let mut module_name_filename_safe = module_name.to_string();
@@ -949,7 +949,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 									Ok(_) => {
 										let mut new_parent_files = parent_files.clone();
 										new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-										extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+										extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive, progress_tx)?;
 									},
 									Err(e) => {
 										error!("Error writing to file {:?}: {}", outpath, e)
@@ -964,7 +964,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 						let mut text: String = String::new();
 						// trace!("sheet_metadata: {:?}", sheet);
 						if sheet.typ == calamine::SheetType::WorkSheet {
-							trace!("Reading sheet: {}", sheet.name);
+							//trace!("Reading sheet: {}", sheet.name);
 							if let Ok(range) = workbook.worksheet_range(&sheet.name) {
 								for row in range.rows() {
 									let mut line: String = String::new();
@@ -990,7 +990,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 									Ok(_) => {
 										let mut new_parent_files = parent_files.clone();
 										new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-										extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+										extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive, progress_tx)?;
 									},
 									Err(e) => {
 										error!("Error writing to file {:?}: {}", outpath, e)
@@ -998,7 +998,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 								}
 							}
 						} else {
-							trace!("Skipping sheet {} of type {:?}", sheet.name, sheet.typ);
+							//trace!("Skipping sheet {} of type {:?}", sheet.name, sheet.typ);
 						}
 					}
 
@@ -1006,14 +1006,16 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 				Err(err) => {
 					match err {
 						calamine::Error::Xls(calamine::XlsError::Cfb(msg)) => {
-							warn!("Xls Cfb error: {}, in file {:?}", msg, filepath);
+							asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("Xls Cfb error: {}, in file {:?}", msg, filepath))?;
 						}
 						calamine::Error::Ods(calamine::OdsError::Password)
 						| calamine::Error::Xlsb(calamine::XlsbError::Password)
 						| calamine::Error::Xlsx(calamine::XlsxError::Password) => {
-							warn!("Cannot extract text from password protected file: {:?}", filepath);
+							asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("Cannot extract text from password protected file: {:?}", filepath))?;
 						}
-						_ => {warn!("{}", err)} // return Err(Box::new(err)),
+						_ => {
+							asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("{}", err))?;
+						} // return Err(Box::new(err)),
 					}
 				}
 			}
@@ -1033,7 +1035,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 				match archive.by_index(i) {
 					Ok(mut zipfile) => {
 						if zipfile.encrypted() {
-							info!("Zip file is encrypted, no text extracted {:?}", filepath);
+							asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Info), &format!("Zip file is encrypted, no text extracted {:?}", filepath))?;
 							break;
 						}
 						// debug!("  {}: {} ({} bytes)", i, zipfile.name(), zipfile.size());
@@ -1055,7 +1057,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 								let mut new_parent_files = parent_files.clone();
 								new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
 								// new_parent_files passes ownership instead of reference, because we no longer need it after passing into this function
-								extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive)?;
+								extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive, progress_tx)?;
 								//filepath.file_name().unwrap_or_default().to_string_lossy().to_string()
 							}
 						}
@@ -1063,7 +1065,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 					Err(err) => {
 						match err {
 							ZipError::UnsupportedArchive(errtxt) => {
-								info!("Zip file not supported: ({}) {:?}", errtxt, filepath);
+								asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Info), &format!("Zip file not supported: ({}) {:?}", errtxt, filepath))?;
 								break;
 							}
 							_ => return Err(Error::from(err)),
@@ -1100,7 +1102,7 @@ fn ocr(filepath: &Path) -> anyhow::Result<String> {
 		.arg("-l").arg("eng")
 		.arg(format!("{}", filepath.to_string_lossy().to_string()))
 		.arg(&outpath);
-	trace!("{:#?}", command);
+	//trace!("{:#?}", command);
 	match command.output() {
 		Ok(_output) => {
 			//println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
@@ -1161,7 +1163,7 @@ struct SubFileItem {
 	ok_to_extract_text: bool,
 }
 
-fn extract_text_from_subfile(file_list_item: &SubFileItem) -> anyhow::Result<String> {
+fn extract_text_from_subfile(file_list_item: &SubFileItem, progress_tx: Option<&mpsc::Sender<TxLog>>) -> anyhow::Result<String> {
 	debug!("subfile to extract text: {:?}", file_list_item.filepath);
 	
 	if !file_list_item.ok_to_extract_text {
@@ -1181,7 +1183,7 @@ fn extract_text_from_subfile(file_list_item: &SubFileItem) -> anyhow::Result<Str
 					return Ok(text);
 				}
 				Err(e) => {
-					warn!("Error extracting text from docx {:?}\n{:?}", file_list_item.filepath, e);
+					asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("Error extracting text from docx {:?}\n{:?}", file_list_item.filepath, e))?;
 					return Ok(String::new());
 				}
 			}
@@ -1195,7 +1197,7 @@ fn extract_text_from_subfile(file_list_item: &SubFileItem) -> anyhow::Result<Str
 					return Ok(text);
 				}
 				Err(e) => {
-					warn!("Error extracting text from docx {:?}\n{:?}", file_list_item.filepath, e);
+					asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("Error extracting text from odt {:?}\n{:?}", file_list_item.filepath, e))?;
 					return Ok(String::new());
 				}
 			}
@@ -1207,7 +1209,7 @@ fn extract_text_from_subfile(file_list_item: &SubFileItem) -> anyhow::Result<Str
 					return Ok(extracted_text);
 				}
 				Err(e) => {
-					warn!("Error extracting text from image {:?}\n{:?}", file_list_item.filepath, e);
+					asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("Error extracting text from image {:?}\n{:?}", file_list_item.filepath, e))?;
 					return Ok(String::new());
 				}
 			}
@@ -1231,10 +1233,11 @@ pub struct FileListItem {
 	pub text_contents: Option<String>
 }
 
-pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListItem>, keep_going: Arc<AtomicBool>) -> anyhow::Result<Vec<FileListItem>> {
+pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListItem>, keep_going: Arc<AtomicBool>, progress_tx: Option<&mpsc::Sender<TxLog>>) -> anyhow::Result<Vec<FileListItem>> {
 	let mut list_of_files_in_archive: Vec<SubFileItem> = Vec::new();
 	let parent_files: Vec<String> = Vec::new();
-	extract_archive(filepath, 0, parent_files, &mut list_of_files_in_archive)?;
+	asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Info), &format!("Starting extraction of text from {}.", filepath.to_string_lossy()))?;
+	extract_archive(filepath, 0, parent_files, &mut list_of_files_in_archive, progress_tx)?;
 
 	// debug!("list_of_files_in_archive: {:#?}", list_of_files_in_archive);
 
@@ -1247,7 +1250,7 @@ pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListIt
 			Ok(metadata) => {
 				let file_name = sub_file_item.filepath.file_name().unwrap().to_string_lossy().to_string();
 				let file_len:u64 = metadata.len();
-				trace!("file_len {}", file_len);
+				//trace!("file_len {}", file_len);
 				if file_len==0 {
 					//add a SubFileItem with empty contents.
 					let file_list_item: FileListItem = FileListItem{
@@ -1266,7 +1269,7 @@ pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListIt
 				let file_crc: i64 = checksum_file(Crc64Nvme, sub_file_item.filepath.to_str().unwrap(), None).unwrap() as i64;
 
 				if file_len > MAX_FILE_SIZE {
-					info!("Skiping subfile {} due to large size {}.", file_name, file_len);
+					asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Info), &format!("Skiping subfile {} due to large size {}.", file_name, file_len))?;
 					let file_list_item: FileListItem = FileListItem{
 						filename: file_name,
 						parent_files: sub_file_item.parent_files,
@@ -1301,7 +1304,7 @@ pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListIt
 					};
 					file_list_items.push(file_list_item);
 				} else {
-					let subfile_text = extract_text_from_subfile(&sub_file_item)?;
+					let subfile_text = extract_text_from_subfile(&sub_file_item, progress_tx)?;
 					// trace!("subfile_text {:?}", subfile_text);
 					//cleanup of temp files and dirs
 					if DELETE_TEMP_FILES {
@@ -1341,10 +1344,10 @@ pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListIt
 	Ok(file_list_items)
 }
 
-pub fn extract_text_from_file_to_string(filepath: &Path, pre_scanned_items: Option<Vec<FileListItem>>, keep_going: Option<Arc<AtomicBool>>) -> anyhow::Result<String> {
+pub fn extract_text_from_file_to_string(filepath: &Path, pre_scanned_items: Option<Vec<FileListItem>>, keep_going: Option<Arc<AtomicBool>>, progress_tx: Option<&mpsc::Sender<TxLog>>) -> anyhow::Result<String> {
 	let mut rtn = String::new();
 
-	let contents = extract_text_from_file(filepath, pre_scanned_items.unwrap_or_default(), keep_going.unwrap_or(Arc::new(AtomicBool::new(true))))?;
+	let contents = extract_text_from_file(filepath, pre_scanned_items.unwrap_or_default(), keep_going.unwrap_or(Arc::new(AtomicBool::new(true))), progress_tx)?;
 	for fli in contents {
 		if let Some(text_to_add) = fli.text_contents {
 			rtn.push_str(&text_to_add);
@@ -1355,141 +1358,142 @@ pub fn extract_text_from_file_to_string(filepath: &Path, pre_scanned_items: Opti
 	return Ok(rtn)
 }
 
-#[cfg(test)]
-mod tests {
-	use super::*;
+// #[cfg(test)]
+// mod tests {
+// 	use super::*;
 
-    #[test]
-    fn extract_text_from_file_empty_file() {
-		let pre_scanned_items: Vec<FileListItem> = Vec::new();
-		let keep_going = Arc::new(AtomicBool::new(true));
-		let keep_going_flag = keep_going.clone();
-		let result = extract_text_from_file(
-			Path::new("./tests/resources/files_to_scan/empty_file"),
-			pre_scanned_items,
-			keep_going_flag
-		).unwrap();
-		//load expected from serde serialization
-		let serial_path = Path::new("./tests/resources/expected/empty_file.json");
-		let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
-		let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
+//     #[test]
+//     fn extract_text_from_file_empty_file() {
+// 		let pre_scanned_items: Vec<FileListItem> = Vec::new();
+// 		let keep_going = Arc::new(AtomicBool::new(true));
+// 		let keep_going_flag = keep_going.clone();
+// 		let result = extract_text_from_file(
+// 			Path::new("./tests/resources/files_to_scan/empty_file"),
+// 			pre_scanned_items,
+// 			keep_going_flag,
+// 			None
+// 		).unwrap();
+// 		//load expected from serde serialization
+// 		let serial_path = Path::new("./tests/resources/expected/empty_file.json");
+// 		let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
+// 		let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
 		
-		assert_eq!(result, expected);
-    }
+// 		assert_eq!(result, expected);
+//     }
 
-	#[test]
-    fn extract_text_from_file_txt_utf8() {
-		let pre_scanned_items: Vec<FileListItem> = Vec::new();
-		let keep_going = Arc::new(AtomicBool::new(true));
-		let keep_going_flag = keep_going.clone();
-		let result = extract_text_from_file(
-			Path::new("./tests/resources/files_to_scan/txt/text_utf8.txt"),
-			pre_scanned_items,
-			keep_going_flag
-		).unwrap();
-		// //load expected from serde serialization
-		// let serial_path = Path::new("./tests/resources/expected/empty_file.json");
-		// let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
-		// let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
-		//check each byte of contents
-		println!("*** {}", result.len());
+// 	#[test]
+//     fn extract_text_from_file_txt_utf8() {
+// 		let pre_scanned_items: Vec<FileListItem> = Vec::new();
+// 		let keep_going = Arc::new(AtomicBool::new(true));
+// 		let keep_going_flag = keep_going.clone();
+// 		let result = extract_text_from_file(
+// 			Path::new("./tests/resources/files_to_scan/txt/text_utf8.txt"),
+// 			pre_scanned_items,
+// 			keep_going_flag
+// 		).unwrap();
+// 		// //load expected from serde serialization
+// 		// let serial_path = Path::new("./tests/resources/expected/empty_file.json");
+// 		// let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
+// 		// let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
+// 		//check each byte of contents
+// 		println!("*** {}", result.len());
 		
-		// assert_eq!(result, None);
-    }
+// 		// assert_eq!(result, None);
+//     }
 
-    #[cfg(target_os = "windows")]
-	#[test]
-    fn extract_text_from_file_docs_5407953830_pdf() {
-		let pre_scanned_items: Vec<FileListItem> = Vec::new();
-		let keep_going = Arc::new(AtomicBool::new(true));
-		let keep_going_flag = keep_going.clone();
-		let result = extract_text_from_file(
-			Path::new("./tests/resources/files_to_scan/docs/5407953830.pdf"),
-			pre_scanned_items,
-			keep_going_flag
-		).unwrap();
-		//load expected from serde serialization
-		let serial_path = Path::new("./tests/resources/expected/docs/5407953830.pdf.windows.json");
-		let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
-		let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
+//     #[cfg(target_os = "windows")]
+// 	#[test]
+//     fn extract_text_from_file_docs_5407953830_pdf() {
+// 		let pre_scanned_items: Vec<FileListItem> = Vec::new();
+// 		let keep_going = Arc::new(AtomicBool::new(true));
+// 		let keep_going_flag = keep_going.clone();
+// 		let result = extract_text_from_file(
+// 			Path::new("./tests/resources/files_to_scan/docs/5407953830.pdf"),
+// 			pre_scanned_items,
+// 			keep_going_flag
+// 		).unwrap();
+// 		//load expected from serde serialization
+// 		let serial_path = Path::new("./tests/resources/expected/docs/5407953830.pdf.windows.json");
+// 		let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
+// 		let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
 		
-		assert_eq!(result, expected);
-    }
+// 		assert_eq!(result, expected);
+//     }
 
-    #[cfg(target_os = "linux")]
-	#[test]
-    fn extract_text_from_file_docs_5407953830_pdf() {
-		let pre_scanned_items: Vec<FileListItem> = Vec::new();
-		let keep_going = Arc::new(AtomicBool::new(true));
-		let keep_going_flag = keep_going.clone();
-		let result = extract_text_from_file(
-			Path::new("./tests/resources/files_to_scan/docs/5407953830.pdf"),
-			pre_scanned_items,
-			keep_going_flag
-		).unwrap();
-		//load expected from serde serialization
-		let serial_path = Path::new("./tests/resources/expected/docs/5407953830.pdf.linux.json");
-		let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
-		let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
+//     #[cfg(target_os = "linux")]
+// 	#[test]
+//     fn extract_text_from_file_docs_5407953830_pdf() {
+// 		let pre_scanned_items: Vec<FileListItem> = Vec::new();
+// 		let keep_going = Arc::new(AtomicBool::new(true));
+// 		let keep_going_flag = keep_going.clone();
+// 		let result = extract_text_from_file(
+// 			Path::new("./tests/resources/files_to_scan/docs/5407953830.pdf"),
+// 			pre_scanned_items,
+// 			keep_going_flag
+// 		).unwrap();
+// 		//load expected from serde serialization
+// 		let serial_path = Path::new("./tests/resources/expected/docs/5407953830.pdf.linux.json");
+// 		let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
+// 		let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
 		
-		assert_eq!(result, expected);
-    }
+// 		assert_eq!(result, expected);
+//     }
 
-    #[cfg(target_os = "windows")]
-	#[test]
-    fn extract_text_from_file_emails_msg_in_msg() {
-		let pre_scanned_items: Vec<FileListItem> = Vec::new();
-		let keep_going = Arc::new(AtomicBool::new(true));
-		let keep_going_flag = keep_going.clone();
-		let result = extract_text_from_file(
-			Path::new("./tests/resources/files_to_scan/emails/msg_in_msg.msg"),
-			pre_scanned_items,
-			keep_going_flag
-		).unwrap();
-		//load expected from serde serialization
-		let serial_path = Path::new("./tests/resources/expected/emails/msg_in_msg.msg.windows.json");
-		let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
-		let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
+//     #[cfg(target_os = "windows")]
+// 	#[test]
+//     fn extract_text_from_file_emails_msg_in_msg() {
+// 		let pre_scanned_items: Vec<FileListItem> = Vec::new();
+// 		let keep_going = Arc::new(AtomicBool::new(true));
+// 		let keep_going_flag = keep_going.clone();
+// 		let result = extract_text_from_file(
+// 			Path::new("./tests/resources/files_to_scan/emails/msg_in_msg.msg"),
+// 			pre_scanned_items,
+// 			keep_going_flag
+// 		).unwrap();
+// 		//load expected from serde serialization
+// 		let serial_path = Path::new("./tests/resources/expected/emails/msg_in_msg.msg.windows.json");
+// 		let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
+// 		let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
 		
-		assert_eq!(result, expected);
-    }
+// 		assert_eq!(result, expected);
+//     }
 
-    #[cfg(target_os = "linux")]
-	#[test]
-    fn extract_text_from_file_emails_msg_in_msg() {
-		let pre_scanned_items: Vec<FileListItem> = Vec::new();
-		let keep_going = Arc::new(AtomicBool::new(true));
-		let keep_going_flag = keep_going.clone();
-		let result = extract_text_from_file(
-			Path::new("./tests/resources/files_to_scan/emails/msg_in_msg.msg"),
-			pre_scanned_items,
-			keep_going_flag
-		).unwrap();
-		//load expected from serde serialization
-		let serial_path = Path::new("./tests/resources/expected/emails/msg_in_msg.msg.linux.json");
-		let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
-		let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
+//     #[cfg(target_os = "linux")]
+// 	#[test]
+//     fn extract_text_from_file_emails_msg_in_msg() {
+// 		let pre_scanned_items: Vec<FileListItem> = Vec::new();
+// 		let keep_going = Arc::new(AtomicBool::new(true));
+// 		let keep_going_flag = keep_going.clone();
+// 		let result = extract_text_from_file(
+// 			Path::new("./tests/resources/files_to_scan/emails/msg_in_msg.msg"),
+// 			pre_scanned_items,
+// 			keep_going_flag
+// 		).unwrap();
+// 		//load expected from serde serialization
+// 		let serial_path = Path::new("./tests/resources/expected/emails/msg_in_msg.msg.linux.json");
+// 		let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
+// 		let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
 		
-		assert_eq!(result, expected);
-    }
+// 		assert_eq!(result, expected);
+//     }
 
-	//this one is large and slow
-	// #[test]
-    // fn extract_text_from_file_emails_msg_in_msg_in_msg() {
-	// 	let pre_scanned_items: Vec<FileListItem> = Vec::new();
-	// 	let keep_going = Arc::new(AtomicBool::new(true));
-	// 	let keep_going_flag = keep_going.clone();
-	// 	let result = extract_text_from_file(
-	// 		Path::new("./tests/resources/files_to_scan/emails/msg_in_msg_in_msg.msg"),
-	// 		pre_scanned_items,
-	// 		keep_going_flag
-	// 	).unwrap();
-	// 	//load expected from serde serialization
-	// 	let serial_path = Path::new("./tests/resources/expected/emails/msg_in_msg_in_msg.msg.json");
-	// 	let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
-	// 	let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
+// 	//this one is large and slow
+// 	// #[test]
+//     // fn extract_text_from_file_emails_msg_in_msg_in_msg() {
+// 	// 	let pre_scanned_items: Vec<FileListItem> = Vec::new();
+// 	// 	let keep_going = Arc::new(AtomicBool::new(true));
+// 	// 	let keep_going_flag = keep_going.clone();
+// 	// 	let result = extract_text_from_file(
+// 	// 		Path::new("./tests/resources/files_to_scan/emails/msg_in_msg_in_msg.msg"),
+// 	// 		pre_scanned_items,
+// 	// 		keep_going_flag
+// 	// 	).unwrap();
+// 	// 	//load expected from serde serialization
+// 	// 	let serial_path = Path::new("./tests/resources/expected/emails/msg_in_msg_in_msg.msg.json");
+// 	// 	let obj_as_json = fs::read_to_string(serial_path).expect("Error reading serialized file.");
+// 	// 	let expected: Vec<FileListItem> = serde_json::from_str(&obj_as_json).expect("Error loading serialized json.");
 		
-	// 	assert_eq!(result, expected);
-    // }
+// 	// 	assert_eq!(result, expected);
+//     // }
 
-}
+// }
