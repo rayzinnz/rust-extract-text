@@ -12,7 +12,7 @@ use cfb::CompoundFile;
 use crc_fast::{checksum_file, CrcAlgorithm::Crc64Nvme};
 use encoding_rs::{Encoding, UTF_8, UTF_16BE, UTF_16LE, WINDOWS_1252};
 use encoding_rs_io::DecodeReaderBytesBuilder;
-use helper_lib::{asyncs::{self, TxLog}, strings::get_last_n_chars};
+use helper_lib::{asyncs::{self, TxLevel, TxMsg}, strings::get_last_n_chars};
 use log::*;
 use mail_parser::{MessageParser, MimeHeaders};
 use serde::{Serialize, Deserialize};
@@ -308,9 +308,9 @@ fn msg_get_contents(cfbf: &mut CompoundFile<File>, path: PathBuf) -> anyhow::Res
 /// # Returns
 /// 
 /// * A heirarchal list of filepaths of any extracted files, includes the top-level file
-fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of_files_in_archive: &mut Vec<SubFileItem>, progress_tx: Option<&mpsc::Sender<TxLog>>) -> anyhow::Result<()> {
+fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of_files_in_archive: &mut Vec<SubFileItem>, progress_tx: Option<&mpsc::Sender<TxMsg>>) -> anyhow::Result<()> {
 
-	asyncs::send_tx_msg_op_sync(progress_tx, None, &format!("extract_archive: filepath: {}", filepath.to_string_lossy()))?;
+	asyncs::send_tx_msg_op_sync(progress_tx, TxLevel::Progress, &format!("extract_archive: filepath: {}", filepath.to_string_lossy()))?;
 	debug!("extract_archive: filepath: {:?}", filepath);
 	if filepath.metadata()?.len() == 0 {
 		list_of_files_in_archive.push(SubFileItem {
@@ -361,7 +361,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 				Err(err) => {
 					match err {
 						sevenz_rust::Error::MaybeBadPassword(msg) => {
-							asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("sevenz_rust::Error::MaybeBadPassword: {}", msg))?;
+							asyncs::send_tx_msg_op_sync(progress_tx, TxLevel::Warn, &format!("sevenz_rust::Error::MaybeBadPassword: {}", msg))?;
 						}
 						_ => return Err(Error::from(err))
 					}
@@ -681,7 +681,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 					// println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
 					if !output.stderr.is_empty() {
 						debug!("{:#?}", command);
-						asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr)))?;
+						asyncs::send_tx_msg_op_sync(progress_tx, TxLevel::Warn, &format!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr)))?;
 					} else {
 						let output = String::from_utf8_lossy(&output.stdout);
 						let output = output.lines();
@@ -729,7 +729,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 								is_text_extract_denied = true;
 							} else {
 								debug!("{:#?}", command);
-								asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("Error returned from {:?}: {}", command.get_program(), output_text))?;
+								asyncs::send_tx_msg_op_sync(progress_tx, TxLevel::Warn, &format!("Error returned from {:?}: {}", command.get_program(), output_text))?;
 							}
 						}
 						if !is_text_extract_denied {
@@ -769,7 +769,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 										//don't worry about this error
 									} else {
 										debug!("{:#?}", command);
-										asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr)))?;
+										asyncs::send_tx_msg_op_sync(progress_tx, TxLevel::Warn, &format!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr)))?;
 									}
 								}
 								let mut new_parent_files = parent_files.clone();
@@ -805,7 +805,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							Ok(output) => {
 								if !output.stderr.is_empty() {
 									debug!("{:#?}", command);
-									asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr)))?;
+									asyncs::send_tx_msg_op_sync(progress_tx, TxLevel::Warn, &format!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr)))?;
 								} else {
 									//println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
 									let output = String::from_utf8_lossy(&output.stdout);
@@ -1006,15 +1006,15 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 				Err(err) => {
 					match err {
 						calamine::Error::Xls(calamine::XlsError::Cfb(msg)) => {
-							asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("Xls Cfb error: {}, in file {:?}", msg, filepath))?;
+							asyncs::send_tx_msg_op_sync(progress_tx, TxLevel::Warn, &format!("Xls Cfb error: {}, in file {:?}", msg, filepath))?;
 						}
 						calamine::Error::Ods(calamine::OdsError::Password)
 						| calamine::Error::Xlsb(calamine::XlsbError::Password)
 						| calamine::Error::Xlsx(calamine::XlsxError::Password) => {
-							asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("Cannot extract text from password protected file: {:?}", filepath))?;
+							asyncs::send_tx_msg_op_sync(progress_tx, TxLevel::Warn, &format!("Cannot extract text from password protected file: {:?}", filepath))?;
 						}
 						_ => {
-							asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("{}", err))?;
+							asyncs::send_tx_msg_op_sync(progress_tx, TxLevel::Warn, &format!("{}", err))?;
 						} // return Err(Box::new(err)),
 					}
 				}
@@ -1035,7 +1035,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 				match archive.by_index(i) {
 					Ok(mut zipfile) => {
 						if zipfile.encrypted() {
-							asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Info), &format!("Zip file is encrypted, no text extracted {:?}", filepath))?;
+							asyncs::send_tx_msg_op_sync(progress_tx, TxLevel::Info, &format!("Zip file is encrypted, no text extracted {:?}", filepath))?;
 							break;
 						}
 						// debug!("  {}: {} ({} bytes)", i, zipfile.name(), zipfile.size());
@@ -1065,7 +1065,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 					Err(err) => {
 						match err {
 							ZipError::UnsupportedArchive(errtxt) => {
-								asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Info), &format!("Zip file not supported: ({}) {:?}", errtxt, filepath))?;
+								asyncs::send_tx_msg_op_sync(progress_tx, TxLevel::Info, &format!("Zip file not supported: ({}) {:?}", errtxt, filepath))?;
 								break;
 							}
 							_ => return Err(Error::from(err)),
@@ -1163,7 +1163,7 @@ struct SubFileItem {
 	ok_to_extract_text: bool,
 }
 
-fn extract_text_from_subfile(file_list_item: &SubFileItem, progress_tx: Option<&mpsc::Sender<TxLog>>) -> anyhow::Result<String> {
+fn extract_text_from_subfile(file_list_item: &SubFileItem, progress_tx: Option<&mpsc::Sender<TxMsg>>) -> anyhow::Result<String> {
 	debug!("subfile to extract text: {:?}", file_list_item.filepath);
 	
 	if !file_list_item.ok_to_extract_text {
@@ -1183,7 +1183,7 @@ fn extract_text_from_subfile(file_list_item: &SubFileItem, progress_tx: Option<&
 					return Ok(text);
 				}
 				Err(e) => {
-					asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("Error extracting text from docx {:?}\n{:?}", file_list_item.filepath, e))?;
+					asyncs::send_tx_msg_op_sync(progress_tx, TxLevel::Warn, &format!("Error extracting text from docx {:?}\n{:?}", file_list_item.filepath, e))?;
 					return Ok(String::new());
 				}
 			}
@@ -1197,7 +1197,7 @@ fn extract_text_from_subfile(file_list_item: &SubFileItem, progress_tx: Option<&
 					return Ok(text);
 				}
 				Err(e) => {
-					asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("Error extracting text from odt {:?}\n{:?}", file_list_item.filepath, e))?;
+					asyncs::send_tx_msg_op_sync(progress_tx, TxLevel::Warn, &format!("Error extracting text from odt {:?}\n{:?}", file_list_item.filepath, e))?;
 					return Ok(String::new());
 				}
 			}
@@ -1209,7 +1209,7 @@ fn extract_text_from_subfile(file_list_item: &SubFileItem, progress_tx: Option<&
 					return Ok(extracted_text);
 				}
 				Err(e) => {
-					asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Warn), &format!("Error extracting text from image {:?}\n{:?}", file_list_item.filepath, e))?;
+					asyncs::send_tx_msg_op_sync(progress_tx, TxLevel::Warn, &format!("Error extracting text from image {:?}\n{:?}", file_list_item.filepath, e))?;
 					return Ok(String::new());
 				}
 			}
@@ -1233,10 +1233,10 @@ pub struct FileListItem {
 	pub text_contents: Option<String>
 }
 
-pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListItem>, keep_going: Arc<AtomicBool>, progress_tx: Option<&mpsc::Sender<TxLog>>) -> anyhow::Result<Vec<FileListItem>> {
+pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListItem>, keep_going: Arc<AtomicBool>, progress_tx: Option<&mpsc::Sender<TxMsg>>) -> anyhow::Result<Vec<FileListItem>> {
 	let mut list_of_files_in_archive: Vec<SubFileItem> = Vec::new();
 	let parent_files: Vec<String> = Vec::new();
-	asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Info), &format!("Starting extraction of text from {}.", filepath.to_string_lossy()))?;
+	asyncs::send_tx_msg_op_sync(progress_tx, TxLevel::Info, &format!("Starting extraction of text from {}.", filepath.to_string_lossy()))?;
 	extract_archive(filepath, 0, parent_files, &mut list_of_files_in_archive, progress_tx)?;
 
 	// debug!("list_of_files_in_archive: {:#?}", list_of_files_in_archive);
@@ -1269,7 +1269,7 @@ pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListIt
 				let file_crc: i64 = checksum_file(Crc64Nvme, sub_file_item.filepath.to_str().unwrap(), None).unwrap() as i64;
 
 				if file_len > MAX_FILE_SIZE {
-					asyncs::send_tx_msg_op_sync(progress_tx, Some(Level::Info), &format!("Skiping subfile {} due to large size {}.", file_name, file_len))?;
+					asyncs::send_tx_msg_op_sync(progress_tx, TxLevel::Info, &format!("Skiping subfile {} due to large size {}.", file_name, file_len))?;
 					let file_list_item: FileListItem = FileListItem{
 						filename: file_name,
 						parent_files: sub_file_item.parent_files,
@@ -1344,7 +1344,7 @@ pub fn extract_text_from_file(filepath: &Path, pre_scanned_items: Vec<FileListIt
 	Ok(file_list_items)
 }
 
-pub fn extract_text_from_file_to_string(filepath: &Path, pre_scanned_items: Option<Vec<FileListItem>>, keep_going: Option<Arc<AtomicBool>>, progress_tx: Option<&mpsc::Sender<TxLog>>) -> anyhow::Result<String> {
+pub fn extract_text_from_file_to_string(filepath: &Path, pre_scanned_items: Option<Vec<FileListItem>>, keep_going: Option<Arc<AtomicBool>>, progress_tx: Option<&mpsc::Sender<TxMsg>>) -> anyhow::Result<String> {
 	let mut rtn = String::new();
 
 	let contents = extract_text_from_file(filepath, pre_scanned_items.unwrap_or_default(), keep_going.unwrap_or(Arc::new(AtomicBool::new(true))), progress_tx)?;

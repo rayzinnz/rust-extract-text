@@ -2,7 +2,7 @@ use anyhow::Result;
 use crc_fast::{checksum_file, CrcAlgorithm::Crc64Nvme};
 use extract_text::*;
 use helper_lib::{
-	asyncs::TxLog, setup_logger, watch_for_quit
+	asyncs::{TxLevel, TxMsg}, setup_logger, watch_for_quit
 };
 use log::*;
 use tokio::{runtime::Runtime, sync::mpsc};
@@ -80,7 +80,7 @@ fn main()  -> Result<()> {
 			let keep_going_flag = keep_going.clone();
 			// let contents = extract_text_from_file(&path, pre_scanned_items, keep_going_flag)?;
 
-			let (progress_tx, mut progress_rx) = mpsc::channel::<TxLog>(32);
+			let (progress_tx, mut progress_rx) = mpsc::channel::<TxMsg>(32);
             
             // Spawn the work task in a separate task so we can receive progress concurrently
             let work_handle = tokio::task::spawn_blocking(move || { extract_text_from_file_to_string(&path, None, None, Some(&progress_tx)) });
@@ -93,14 +93,15 @@ required for `Unique<(dyn cfb::internal::stream::Flusher<std::fs::File> + 'stati
 */
 
             // Receive and print progress messages as they arrive
-            while let Some(status) = progress_rx.recv().await {
-                match status {
-                    TxLog::PrintLn { message } => { println!("{}", message); },
-                    TxLog::Error { message } => { error!("{}", message); }
-                    TxLog::Warn { message } => { warn!("{}", message); }
-                    TxLog::Info { message } => { info!("{}", message); }
-                    TxLog::Debug { message } => { debug!("{}", message); }
-                    TxLog::Trace { message } => { trace!("{}", message); }
+            while let Some(txmsg) = progress_rx.recv().await {
+                match txmsg.txlevel {
+                    TxLevel::Progress => { println!("{}", txmsg.message); },
+                    TxLevel::PrintLn => { println!("{}", txmsg.message); },
+                    TxLevel::Error => { error!("{}", txmsg.message); }
+                    TxLevel::Warn => { warn!("{}", txmsg.message); }
+                    TxLevel::Info => { info!("{}", txmsg.message); }
+                    TxLevel::Debug => { debug!("{}", txmsg.message); }
+                    TxLevel::Trace => { trace!("{}", txmsg.message); }
                 }
             }
 
