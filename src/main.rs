@@ -72,7 +72,7 @@ fn main()  -> Result<()> {
 			// let subpath = Path::new("emails/test_email_1.msg");
 			// let subpath = Path::new("emails/COD eLIMS.msg");
 
-			let path = Path::new(r"C:\Users\hrag\Sync\Programming\rust\rust-extract-text\tests\resources\files_to_scan\emails\pkcs7_signed_email_p7m.msg");
+			let path = Path::new(r"C:\Users\hrag\temp\msg_examples\00000000D45054722F86FD428F649C0C5C85DC2344A42700.msg");
 			// let path = Path::new("./tests/resources/files_to_scan").join(subpath);
 			let file_crc = checksum_file(Crc64Nvme, path.to_str().unwrap(), None).unwrap() as i64;
 			debug!("file_crc: {}", file_crc);

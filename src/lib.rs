@@ -521,8 +521,10 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 							} else {
 								bail!("Body stream not found in {:?}", filepath)
 							}
+							let mut is_p7m = false;
 							match filename.rsplit_once(".") {
 								Some((noext, ext)) => {
+									is_p7m = ext=="p7m";
 									filename = noext.to_owned() + "_" + &file_id + "." + ext;
 								},
 								None => {
@@ -530,22 +532,26 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 								}
 							}
 							//download binary attachment
-							let mut stream = cfbf.open_stream(sub_path.join("__substg1.0_37010102"))?;
-							let mut data = Vec::new();
-							stream.read_to_end(&mut data)?;
-							let outpath = tempfiles_location().join(&achive_uuid_subdir).join(achive_uuid_msg_subdir).join(sub_path.components().last().unwrap()).join(filename);
-							fs::create_dir_all(outpath.parent().unwrap())?;
-							match fs::write(&outpath, data) {
-								Ok(_) => {
-									let mut new_parent_files = parent_files.clone();
-									new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-									let parent_files_subpaths: Vec<String> = filesubpath.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect();
-									new_parent_files.extend(parent_files_subpaths);
-									extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive, progress_tx)?;
-								},
-								Err(e) => {
-									error!("Error writing to file {:?}: {}", outpath, e)
-								},
+							if is_p7m && !body.is_empty() {
+								//body already filled, do not need to parse the p7m
+							} else {
+								let mut stream = cfbf.open_stream(sub_path.join("__substg1.0_37010102"))?;
+								let mut data = Vec::new();
+								stream.read_to_end(&mut data)?;
+								let outpath = tempfiles_location().join(&achive_uuid_subdir).join(achive_uuid_msg_subdir).join(sub_path.components().last().unwrap()).join(filename);
+								fs::create_dir_all(outpath.parent().unwrap())?;
+								match fs::write(&outpath, data) {
+									Ok(_) => {
+										let mut new_parent_files = parent_files.clone();
+										new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
+										let parent_files_subpaths: Vec<String> = filesubpath.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect();
+										new_parent_files.extend(parent_files_subpaths);
+										extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive, progress_tx)?;
+									},
+									Err(e) => {
+										error!("Error writing to file {:?}: {}", outpath, e)
+									},
+								}
 							}
 
 						}
@@ -674,6 +680,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 
 			fs::create_dir_all(tempfiles_location().join(&achive_uuid_subdir))?;
 
+			let pkcs7_content:String;
 			let der_data = fs::read(filepath)?;
 			let pkcs7 = Pkcs7::from_der(&der_data)?;
 			let certs = Stack::<X509>::new()?;
@@ -686,7 +693,7 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 				Some(&mut output),
 				Pkcs7Flags::NOVERIFY,
 			)?;
-			let pkcs7_content = String::from_utf8_lossy(&output).to_string();
+			pkcs7_content = String::from_utf8_lossy(&output).to_string();
 			if !pkcs7_content.starts_with("Content-Type:") {
 				bail!("p7m content is not eml. TODO.");
 			}
