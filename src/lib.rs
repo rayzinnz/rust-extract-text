@@ -15,6 +15,7 @@ use encoding_rs_io::DecodeReaderBytesBuilder;
 use helper_lib::{asyncs::{self, TxLevel, TxMsg}, strings::get_last_n_chars};
 use log::*;
 use mail_parser::{MessageParser, MimeHeaders};
+use openssl::{pkcs7::{Pkcs7, Pkcs7Flags}, stack::Stack, x509::{X509, store::X509StoreBuilder}};
 use serde::{Serialize, Deserialize};
 use sevenz_rust::decompress_file_with_password;
 use tokio::sync::mpsc;
@@ -280,7 +281,7 @@ fn msg_get_contents(cfbf: &mut CompoundFile<File>, path: PathBuf) -> anyhow::Res
 			body = data.to_string();
 		}
 	} else {
-		bail!("Body stream not found in {:?}", path)
+		error!("Body stream not found in {:?}", path)
 	}
 
 	//attachments
@@ -659,6 +660,41 @@ fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, list_of
 					}
 				}
 			}
+		}
+		"p7m" => {
+			//pkcs7 encrypted signed stream.
+			//If from email, signed email assumed non-encrypted eml
+
+			list_of_files_in_archive.push(SubFileItem {
+				filepath: filepath.to_path_buf(),
+				depth,
+				parent_files: parent_files.clone(),
+				ok_to_extract_text: false,
+			});
+
+			fs::create_dir_all(tempfiles_location().join(&achive_uuid_subdir))?;
+
+			let der_data = fs::read(filepath)?;
+			let pkcs7 = Pkcs7::from_der(&der_data)?;
+			let certs = Stack::<X509>::new()?;
+			let store = X509StoreBuilder::new()?.build();
+			let mut output = Vec::new();
+			pkcs7.verify(
+				&certs,
+				&store,
+				None,
+				Some(&mut output),
+				Pkcs7Flags::NOVERIFY,
+			)?;
+			let pkcs7_content = String::from_utf8_lossy(&output).to_string();
+			if !pkcs7_content.starts_with("Content-Type:") {
+				bail!("p7m content is not eml. TODO.");
+			}
+			let outpath = tempfiles_location().join(&achive_uuid_subdir).join(format!("{}.eml", filepath.file_name().unwrap_or_default().to_string_lossy()));
+			std::fs::write(&outpath, pkcs7_content).unwrap();
+			let mut new_parent_files = parent_files.clone();
+			new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
+			extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive, progress_tx)?;
 		}
 		"pdf" => {
 			list_of_files_in_archive.push(SubFileItem {

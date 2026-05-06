@@ -16,7 +16,7 @@ use std::{
 };
 
 fn main()  -> Result<()> {
-	setup_logger(LevelFilter::Info);
+	setup_logger(LevelFilter::Info, None, "", "");
 
 	// error!("Bright red error");
     // info!("This only appears in the log file");
@@ -72,7 +72,7 @@ fn main()  -> Result<()> {
 			// let subpath = Path::new("emails/test_email_1.msg");
 			// let subpath = Path::new("emails/COD eLIMS.msg");
 
-			let path = Path::new(r"C:\Users\hrag\tfsnz\ITSolutionsNewZealand\Tools\Excel Workbooks\EUNZWE\Organics data upload\SVOC\Organics SVOC eLIMS V10(Template).xlsb");
+			let path = Path::new(r"C:\Users\hrag\Sync\Programming\rust\rust-extract-text\tests\resources\files_to_scan\emails\pkcs7_signed_email_p7m.msg");
 			// let path = Path::new("./tests/resources/files_to_scan").join(subpath);
 			let file_crc = checksum_file(Crc64Nvme, path.to_str().unwrap(), None).unwrap() as i64;
 			debug!("file_crc: {}", file_crc);
@@ -107,7 +107,7 @@ required for `Unique<(dyn cfb::internal::stream::Flusher<std::fs::File> + 'stati
 
             // Wait for the work to finish and get the final result
             match work_handle.await.unwrap() {
-                Ok(contents) => debug!("[RESULT] {}", contents),
+                Ok(contents) => println!("[RESULT] {}", contents),
                 Err(e) => eprintln!("[ERROR] {}", e),
             }            
         });
