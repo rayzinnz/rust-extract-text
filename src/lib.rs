@@ -890,7 +890,7 @@ async fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, l
 							Ok(output) => {
 								if !output.stderr.is_empty() {
 									debug!("{:#?}", command);
-									asyncs::send_tx_msg_op(progress_tx, Some(Level::Warn), &format!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr))).await?;
+									asyncs::send_tx_msg_op(progress_tx, TxLevel::Warn, &format!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr))).await?;
 								} else {
 									let output = String::from_utf8_lossy(&output.stdout);
 									//println!("stdout: {}", output);
@@ -912,7 +912,7 @@ async fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, l
 											Ok(output) => {
 												if !output.stderr.is_empty() {
 													debug!("{:#?}", command);
-													asyncs::send_tx_msg_op(progress_tx, Some(Level::Warn), &format!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr))).await?;
+													asyncs::send_tx_msg_op(progress_tx, TxLevel::Warn, &format!("Error returned from {:?}: {}", command.get_program(), String::from_utf8_lossy(&output.stderr))).await?;
 												}
 											}
 											Err(e) => {
