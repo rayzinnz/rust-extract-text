@@ -83,14 +83,10 @@ fn main()  -> Result<()> {
 			let (progress_tx, mut progress_rx) = mpsc::channel::<TxMsg>(32);
             
             // Spawn the work task in a separate task so we can receive progress concurrently
-            let work_handle = tokio::task::spawn_blocking(move || { extract_text_from_file_to_string(&path, None, None, Some(&progress_tx)) });
+            //let work_handle = tokio::task::spawn_blocking(move || { extract_text_from_file_to_string(&path, None, None, Some(&progress_tx)) });
+            let work_handle = tokio::task::spawn(async move { extract_text_from_file_to_string(&path, None, None, Some(&progress_tx)).await });
             // let md = convert_to_markdown(&msg, true, &None, Some(progress_tx)).await.unwrap();
             // println!("{}", md);
-/*
-`(dyn cfb::internal::stream::Flusher<std::fs::File> + 'static)` cannot be sent between threads safely
-the trait `Send` is not implemented for `(dyn cfb::internal::stream::Flusher<std::fs::File> + 'static)`
-required for `Unique<(dyn cfb::internal::stream::Flusher<std::fs::File> + 'static)>` to implement `Send`
-*/
 
             // Receive and print progress messages as they arrive
             while let Some(txmsg) = progress_rx.recv().await {
