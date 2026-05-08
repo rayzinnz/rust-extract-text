@@ -1078,48 +1078,54 @@ async fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, l
 			});
 			
 			let file = File::open(filepath)?;
-			let mut archive = ZipArchive::new(file)?;
-			debug!("Total entries: {}", archive.len());
-			for i in 0..archive.len() {
-				match archive.by_index(i) {
-					Ok(mut zipfile) => {
-						if zipfile.encrypted() {
-							asyncs::send_tx_msg_op(progress_tx, TxLevel::Info, &format!("Zip file is encrypted, no text extracted {:?}", filepath)).await?;
-							break;
-						}
-						// debug!("  {}: {} ({} bytes)", i, zipfile.name(), zipfile.size());
-						let outpath = tempfiles_location().join(&achive_uuid_subdir).join(zipfile.mangled_name());
-						if zipfile.is_dir() {
-							fs::create_dir_all(&outpath)?;
-							// debug!("Created directory: {:?}", outpath);
-						} else {
-							// Handle files
-							if let Some(parent) = outpath.parent() {
-								fs::create_dir_all(parent)?;
-							}
+			match ZipArchive::new(file) {
+				Ok(mut archive) => {
+					debug!("Total entries: {}", archive.len());
+					for i in 0..archive.len() {
+						match archive.by_index(i) {
+							Ok(mut zipfile) => {
+								if zipfile.encrypted() {
+									asyncs::send_tx_msg_op(progress_tx, TxLevel::Info, &format!("Zip file is encrypted, no text extracted {:?}", filepath)).await?;
+									break;
+								}
+								// debug!("  {}: {} ({} bytes)", i, zipfile.name(), zipfile.size());
+								let outpath = tempfiles_location().join(&achive_uuid_subdir).join(zipfile.mangled_name());
+								if zipfile.is_dir() {
+									fs::create_dir_all(&outpath)?;
+									// debug!("Created directory: {:?}", outpath);
+								} else {
+									// Handle files
+									if let Some(parent) = outpath.parent() {
+										fs::create_dir_all(parent)?;
+									}
 
-							// Extract the file
-							if !outpath.exists() { // if file already exists, as it duplicate filenames can appear in some archives (e.g. if archive created in linux with different case, and Windows does not care about case), just skip it.
-								let mut outfile = File::create(&outpath)?;
-								io::copy(&mut zipfile, &mut outfile)?;
-								debug!("Extracted: {:?}", outpath);
-								let mut new_parent_files = parent_files.clone();
-								new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
-								// new_parent_files passes ownership instead of reference, because we no longer need it after passing into this function
-								Box::pin(extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive, progress_tx)).await?;
-								//filepath.file_name().unwrap_or_default().to_string_lossy().to_string()
+									// Extract the file
+									if !outpath.exists() { // if file already exists, as it duplicate filenames can appear in some archives (e.g. if archive created in linux with different case, and Windows does not care about case), just skip it.
+										let mut outfile = File::create(&outpath)?;
+										io::copy(&mut zipfile, &mut outfile)?;
+										debug!("Extracted: {:?}", outpath);
+										let mut new_parent_files = parent_files.clone();
+										new_parent_files.push(filepath.file_name().unwrap_or_default().to_string_lossy().to_string());
+										// new_parent_files passes ownership instead of reference, because we no longer need it after passing into this function
+										Box::pin(extract_archive(outpath.as_path(), depth+1, new_parent_files, list_of_files_in_archive, progress_tx)).await?;
+										//filepath.file_name().unwrap_or_default().to_string_lossy().to_string()
+									}
+								}
+							}
+							Err(err) => {
+								match err {
+									ZipError::UnsupportedArchive(errtxt) => {
+										asyncs::send_tx_msg_op(progress_tx, TxLevel::Info, &format!("Zip file not supported: ({}) {:?}", errtxt, filepath)).await?;
+										break;
+									}
+									_ => return Err(Error::from(err)),
+								}
 							}
 						}
 					}
-					Err(err) => {
-						match err {
-							ZipError::UnsupportedArchive(errtxt) => {
-								asyncs::send_tx_msg_op(progress_tx, TxLevel::Info, &format!("Zip file not supported: ({}) {:?}", errtxt, filepath)).await?;
-								break;
-							}
-							_ => return Err(Error::from(err)),
-						}
-					}
+				}
+				Err(e) => {
+					asyncs::send_tx_msg_op(progress_tx, TxLevel::Error, &format!("Error opening zip file {}\n{}", filepath.to_string_lossy(), e)).await?;
 				}
 			}
 		}
