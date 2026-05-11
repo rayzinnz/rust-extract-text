@@ -506,7 +506,7 @@ async fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, l
 						// attachment binary, 0x3701 AttachDataObject, 0x0102 PT_BINARY
 						if cfbf.exists(sub_path.join("__substg1.0_37010102")) {
 							// println!("Binary attachment");
-							//attachment filename, 0x3707 AttachLongFilename, 0x001F UTF_16LE
+							//attachment filename, 0x3707 AttachLongFilename, 0x001F UTF_16LE, 0x3704, AttachFilename
 							let mut filename: String;
 							if let Ok(mut stream) = cfbf.open_stream(sub_path.join("__substg1.0_3707001F")) {
 								let mut data = Vec::new();
@@ -514,6 +514,16 @@ async fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, l
 								let data = UTF_16LE.decode(&data);
 								filename = data.0.to_string();
 							} else if let Ok(mut stream) = cfbf.open_stream(sub_path.join("__substg1.0_3707001E")) {
+								let mut data = Vec::new();
+								stream.read_to_end(&mut data)?;
+								let data = String::from_utf8_lossy(&data);
+								filename = data.to_string();
+							} else if let Ok(mut stream) = cfbf.open_stream(sub_path.join("__substg1.0_3704001F")) {
+								let mut data = Vec::new();
+								stream.read_to_end(&mut data)?;
+								let data = UTF_16LE.decode(&data);
+								filename = data.0.to_string();
+							} else if let Ok(mut stream) = cfbf.open_stream(sub_path.join("__substg1.0_3704001E")) {
 								let mut data = Vec::new();
 								stream.read_to_end(&mut data)?;
 								let data = String::from_utf8_lossy(&data);
