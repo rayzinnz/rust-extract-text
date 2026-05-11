@@ -281,7 +281,7 @@ fn msg_get_contents(cfbf: &mut CompoundFile<File>, path: PathBuf) -> anyhow::Res
 			body = data.to_string();
 		}
 	} else {
-		error!("Body stream not found in {:?}", path)
+		error!("Body stream not found in {}", path.to_string_lossy())
 	}
 
 	//attachments
@@ -519,7 +519,7 @@ async fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, l
 								let data = String::from_utf8_lossy(&data);
 								filename = data.to_string();
 							} else {
-								bail!("Body stream not found in {:?}", filepath)
+								bail!("Filename stream for file attachment not found in {:?}", filepath)
 							}
 							let mut is_p7m = false;
 							match filename.rsplit_once(".") {
@@ -566,6 +566,8 @@ async fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, l
 							// println!("MSG attachment");
 							//attachment displayname, 0x3001 DisplayName, 0x001F UTF_16LE
 							let mut displayname: String;
+							//3001 - displayname
+							//0037 - subject
 							if let Ok(mut stream) = cfbf.open_stream(sub_path.join("__substg1.0_3001001F")) {
 								let mut data = Vec::new();
 								stream.read_to_end(&mut data)?;
@@ -576,8 +578,18 @@ async fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, l
 								stream.read_to_end(&mut data)?;
 								let data = String::from_utf8_lossy(&data);
 								displayname = data.to_string();
+							} else if let Ok(mut stream) = cfbf.open_stream(sub_path.join("__substg1.0_3701000D/__substg1.0_0037001F")) {
+								let mut data = Vec::new();
+								stream.read_to_end(&mut data)?;
+								let data = UTF_16LE.decode(&data);
+								displayname = data.0.to_string();
+							} else if let Ok(mut stream) = cfbf.open_stream(sub_path.join("__substg1.0_3701000D/__substg1.0_0037001E")) {
+								let mut data = Vec::new();
+								stream.read_to_end(&mut data)?;
+								let data = String::from_utf8_lossy(&data);
+								displayname = data.to_string();
 							} else {
-								bail!("Body stream not found in {:?}", filepath)
+								bail!("Display name subject stream for msg attachment not found in {:?}", filepath)
 							}
 							displayname.retain(|c| !FILENAME_ILLEGAL_CHARS.contains(&c));
 							//empty file placeholder as embedded msg

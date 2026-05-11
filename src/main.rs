@@ -16,7 +16,7 @@ use std::{
 };
 
 fn main()  -> Result<()> {
-	setup_logger(LevelFilter::Info, None, "", "");
+	setup_logger(LevelFilter::Debug, None, "", "");
 
 	// error!("Bright red error");
     // info!("This only appears in the log file");
@@ -72,7 +72,7 @@ fn main()  -> Result<()> {
 			// let subpath = Path::new("emails/test_email_1.msg");
 			// let subpath = Path::new("emails/COD eLIMS.msg");
 
-			let path = Path::new(r"\\XXPA001APVP731\itaag016_elimsfgs\Data\PRD\AAG16_EUNZAU_PRD\Exporting\Coupa\Received zip exports\order_line_list_for_excel.zip");
+			let path = Path::new(r"C:\Users\hrag\temp\msg_examples\no_filename.msg");
 			// let path = Path::new("./tests/resources/files_to_scan").join(subpath);
 			let file_crc = checksum_file(Crc64Nvme, path.to_str().unwrap(), None).unwrap() as i64;
 			debug!("file_crc: {}", file_crc);
