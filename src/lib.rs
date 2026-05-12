@@ -15,7 +15,6 @@ use encoding_rs_io::DecodeReaderBytesBuilder;
 use helper_lib::{asyncs::{self, TxLevel, TxMsg}, strings::get_last_n_chars};
 use log::*;
 use mail_parser::{MessageParser, MimeHeaders};
-use openssl::{pkcs7::{Pkcs7, Pkcs7Flags}, stack::Stack, x509::{X509, store::X509StoreBuilder}};
 use serde::{Serialize, Deserialize};
 use sevenz_rust::decompress_file_with_password;
 use tokio::sync::mpsc;
@@ -708,20 +707,9 @@ async fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, l
 
 			fs::create_dir_all(tempfiles_location().join(&achive_uuid_subdir))?;
 
-			let pkcs7_content:String;
 			let der_data = fs::read(filepath)?;
-			let pkcs7 = Pkcs7::from_der(&der_data)?;
-			let certs = Stack::<X509>::new()?;
-			let store = X509StoreBuilder::new()?.build();
-			let mut output = Vec::new();
-			pkcs7.verify(
-				&certs,
-				&store,
-				None,
-				Some(&mut output),
-				Pkcs7Flags::NOVERIFY,
-			)?;
-			pkcs7_content = String::from_utf8_lossy(&output).to_string();
+			let output = p7m_reader::extract_content(&der_data)?;
+			let pkcs7_content = String::from_utf8_lossy(&output).to_string();
 			if !pkcs7_content.starts_with("Content-Type:") {
 				bail!("p7m content is not eml. TODO.");
 			}
