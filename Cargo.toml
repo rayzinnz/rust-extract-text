@@ -10,7 +10,7 @@ cfb = "0.x"
 crc-fast = "1"
 encoding_rs = "0.x"
 encoding_rs_io = "0.x"
-helper_lib = { git = "https://github.com/rayzinnz/rust-helper-lib.git" }
+helper_lib = { git = "https://github.com/rayzinnz/rust-helper-lib.git", features = ["log", "asyncs", "quitter"] }
 log = "0.x"
 mail-parser = "0.x"
 p7m_reader = { git = "https://github.com/rayzinnz/p7m-reader.git" }
