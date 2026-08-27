@@ -46,9 +46,9 @@ pub(crate) fn open_doc_read_data<P: AsRef<Path>>(
             match xml_reader.read_event_into(&mut buf) {
                 Ok(Event::Start(ref e)) => {
                     for tag in tags {
-                        if e.name().as_ref() == tag.as_bytes() {
+                        if e.name().as_ref() == *tag {
                             to_read = true;
-                            if e.name().as_ref() == b"text:p" {
+                            if e.name().as_ref() == "text:p" {
                                 txt.push("\n\n".to_string());
                             }
                             break;
@@ -57,7 +57,7 @@ pub(crate) fn open_doc_read_data<P: AsRef<Path>>(
                 }
                 Ok(Event::Text(e)) => {
                     if to_read {
-                        txt.push(e.decode().unwrap().into_owned());
+                        txt.push(e.to_string());
                         to_read = false;
                     }
                 }

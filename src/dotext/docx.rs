@@ -40,16 +40,16 @@ impl MsDoc<Docx> for Docx {
             loop {
                 match xml_reader.read_event_into(&mut buf) {
                     Ok(Event::Start(ref e)) => match e.name().as_ref() {
-                        b"w:p" => {
+                        "w:p" => {
                             to_read = true;
                             txt.push("\n\n".to_string());
                         }
-                        b"w:t" => to_read = true,
+                        "w:t" => to_read = true,
                         _ => (),
                     },
                     Ok(Event::Text(e)) => {
                         if to_read {
-                            txt.push(e.decode().unwrap().into_owned());
+                            txt.push(e.to_string());
                             to_read = false;
                         }
                     }
