@@ -29,7 +29,7 @@ pub(crate) fn open_doc_read_data<P: AsRef<Path>>(
 
     for i in 0..archive.len() {
         let mut c_file = archive.by_index(i).unwrap();
-        if c_file.name() == content_name {
+        if c_file.name().unwrap_or_default() == content_name {
             c_file.read_to_string(&mut xml_data)?;
             break;
         }

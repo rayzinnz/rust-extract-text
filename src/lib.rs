@@ -1099,7 +1099,7 @@ async fn extract_archive(filepath: &Path, depth:u8, parent_files: Vec<String>, l
 									break;
 								}
 								// debug!("  {}: {} ({} bytes)", i, zipfile.name(), zipfile.size());
-								let outpath = tempfiles_location().join(&achive_uuid_subdir).join(zipfile.mangled_name());
+								let outpath = tempfiles_location().join(&achive_uuid_subdir).join(zipfile.mangled_name().unwrap_or_default());
 								if zipfile.is_dir() {
 									fs::create_dir_all(&outpath)?;
 									// debug!("Created directory: {:?}", outpath);
@@ -1239,6 +1239,43 @@ async fn extract_text_from_subfile(file_list_item: &SubFileItem, progress_tx: Op
 	debug!("extract_text_from_subfile: effective_file_extension: {:?}", effective_file_extension);
 
 	match effective_file_extension.as_str() {
+		"dbf" => {
+			//dbase
+			match dbase::Reader::from_path(file_list_item.filepath.as_path()) {
+				Ok(mut reader) => {
+					let mut str_rows: Vec<String> = Vec::new();
+					let mut str_fields: Vec<String> = Vec::new();
+					{
+						for field in reader.fields() {
+							str_fields.push(format!("{}", field.name()));
+						}
+						str_rows.push(str_fields.join(","));
+					}
+					for record_result in reader.iter_records() {
+						match record_result {
+							Ok(record) => {
+								let mut str_values: Vec<String> = vec![String::new(); str_fields.len()];
+								for (name, value) in record {
+									// println!("Field: {} -> Value: {:?}", name, value);
+									let idx = str_fields.iter().position(|f| f==&name).unwrap();
+									str_values[idx] = format!("{}", value);
+								}
+								str_rows.push(str_values.join(","));
+							}
+							Err(e) => {
+								asyncs::send_tx_msg_op(progress_tx, TxLevel::Warn, &format!("Error reading record in DBF {:?}\n{:?}", file_list_item.filepath, e)).await?;
+							}
+						}
+					}
+
+					return Ok(str_rows.join("\n"));
+				}
+				Err(e) => {
+					asyncs::send_tx_msg_op(progress_tx, TxLevel::Warn, &format!("Error opening DBF {:?}\n{:?}", file_list_item.filepath, e)).await?;
+					return Ok(String::new());
+				}
+			}
+		}
 		"docx" | "docm" => {
 			//dotext
 			match <Docx as MsDoc<Docx>>::open(file_list_item.filepath.as_path()) {

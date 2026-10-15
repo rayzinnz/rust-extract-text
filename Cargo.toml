@@ -8,6 +8,7 @@ anyhow = "1"
 calamine = { git = "https://github.com/rayzinnz/calamine.git" }
 cfb = "0.x"
 crc-fast = "1"
+dbase = { git = "https://github.com/rayzinnz/dbase-rs.git", features = ["chrono", "yore"] }
 encoding_rs = "0.x"
 encoding_rs_io = "0.x"
 helper_lib = { git = "https://github.com/rayzinnz/rust-helper-lib.git", features = ["log", "asyncs", "quitter"] }
@@ -23,4 +24,4 @@ time = "0.x"
 tokio = { version = "1", features = ["full"] }
 uuid = {version = "1", features = ["v4"]}
 walkdir = "2"
-zip = "8"
+zip = "9"

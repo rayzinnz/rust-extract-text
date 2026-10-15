@@ -24,7 +24,7 @@ impl MsDoc<Docx> for Docx {
 
         for i in 0..archive.len() {
             let mut c_file = archive.by_index(i).unwrap();
-            if c_file.name() == "word/document.xml" {
+            if c_file.name().unwrap_or_default() == "word/document.xml" {
                 c_file.read_to_string(&mut xml_data)?;
                 break;
             }
